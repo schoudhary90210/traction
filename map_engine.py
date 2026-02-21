@@ -133,7 +133,7 @@ class TractorSimulator:
 #  Google Maps HTML Generator
 # ==============================================================================
 
-_MAP_STYLE = '[{"elementType":"geometry","stylers":[{"color":"#0e1117"}]},{"elementType":"labels.icon","stylers":[{"visibility":"off"}]},{"elementType":"labels.text.fill","stylers":[{"color":"#5a6072"}]},{"elementType":"labels.text.stroke","stylers":[{"color":"#0e1117"}]},{"featureType":"administrative","elementType":"geometry","stylers":[{"color":"#1a1d28"}]},{"featureType":"poi","elementType":"geometry","stylers":[{"color":"#12141c"}]},{"featureType":"road","elementType":"geometry.fill","stylers":[{"color":"#1a1f2e"}]},{"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#0e1117"}]},{"featureType":"road.highway","elementType":"geometry.fill","stylers":[{"color":"#1e2538"}]},{"featureType":"transit","elementType":"geometry","stylers":[{"color":"#12141c"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#080a10"}]}]'
+_MAP_STYLE = '[{"stylers":[{"saturation":-100}]},{"featureType":"administrative","elementType":"labels.text.fill","stylers":[{"color":"#f0f0f0"}]},{"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#d8d8d8"}]}]'
 
 
 def generate_map_html(
@@ -145,6 +145,8 @@ def generate_map_html(
     field_center,
     field_bounds,
     map_height=420,
+    map_interactive=False,
+    map_zoom=16,
 ):
     """
     Return self-contained HTML for a dark-mode Google Map with tractor marker,
@@ -153,6 +155,10 @@ def generate_map_html(
     clat, clng = field_center
     tlat, tlng = current_pos
     nw_lat, nw_lng, se_lat, se_lng = field_bounds
+    safe_zoom = max(1, min(22, int(map_zoom)))
+    disable_ui = "false" if map_interactive else "true"
+    zoom_control = "true" if map_interactive else "false"
+    gesture_handling = "'greedy'" if map_interactive else "'none'"
 
     # Serialise path for JS
     path_parts = []
@@ -164,9 +170,10 @@ def generate_map_html(
     disease_parts = []
     for d in disease_logs:
         safe = d.label.replace("'", "\\'").replace('"', '\\"')
+        conf = max(0.0, min(1.0, float(d.confidence)))
         disease_parts.append(
             "{lat:" + str(d.lat) + ",lng:" + str(d.lng)
-            + ",label:'" + safe + "',conf:" + str(round(d.confidence, 2)) + "}"
+            + ",label:'" + safe + "',conf:" + str(conf) + "}"
         )
     disease_js = ",".join(disease_parts)
 
@@ -182,13 +189,13 @@ def generate_map_html(
         ".tl{background:rgba(0,230,118,0.15);border:1px solid rgba(0,230,118,0.35);"
         "border-radius:6px;padding:2px 8px;font-family:monospace;font-size:10px;"
         "color:#00e676;font-weight:600}"
-        '</style></head><body><div id="map"></div><script>'
+        '</style><script>'
         "function initMap(){"
         "var s=" + _MAP_STYLE + ";"
         "var m=new google.maps.Map(document.getElementById('map'),{"
         "center:{lat:" + str(clat) + ",lng:" + str(clng) + "},"
-        "zoom:16,styles:s,disableDefaultUI:true,zoomControl:true,"
-        "mapTypeId:'roadmap',backgroundColor:'#08090c'});"
+        "zoom:" + str(safe_zoom) + ",styles:s,disableDefaultUI:" + disable_ui + ",zoomControl:" + zoom_control + ","
+        "gestureHandling:" + gesture_handling + ",mapTypeId:'satellite',backgroundColor:'#08090c'});"
 
         # Field boundary
         "new google.maps.Rectangle({bounds:{"
@@ -220,11 +227,12 @@ def generate_map_html(
         "var ds=[" + disease_js + "];var hd=[];"
         "ds.forEach(function(d){"
         "var p=new google.maps.LatLng(d.lat,d.lng);"
-        "hd.push({location:p,weight:d.conf});"
+        "/** @type {google.maps.visualization.WeightedLocation} */"
+        "var wl={location:p,weight:d.conf};hd.push(wl);"
         "var c=new google.maps.Marker({position:p,map:m,"
         "icon:{path:google.maps.SymbolPath.CIRCLE,scale:10,"
         "fillColor:'#ff3d3d',fillOpacity:0.55,"
-        "strokeColor:'#ff6b6b',strokeWeight:2,strokeOpacity:0.8},zIndex:500});"
+        "strokeColor:'#ffffff',strokeWeight:2,strokeOpacity:0.95},zIndex:500});"
         "new google.maps.Marker({position:p,map:m,"
         "icon:{path:google.maps.SymbolPath.CIRCLE,scale:4,"
         "fillColor:'#ff3d3d',fillOpacity:1,strokeWeight:0},zIndex:501});"
@@ -235,14 +243,14 @@ def generate_map_html(
         "c.addListener('click',function(){pw.open(m,c)});});"
 
         # Heatmap
-        "if(hd.length>0){new google.maps.visualization.HeatmapLayer({"
-        "data:hd,map:m,radius:35,opacity:0.5,"
-        "gradient:['rgba(0,0,0,0)','rgba(255,61,61,0.2)','rgba(255,61,61,0.4)',"
-        "'rgba(255,100,100,0.6)','rgba(255,140,60,0.8)','rgba(255,200,60,1)']});}"
+        "var heatmap=new google.maps.visualization.HeatmapLayer({"
+        "data:hd,map:m,radius:30,opacity:0.75,"
+        "gradient:['rgba(0,0,0,0)','rgba(50,114,255,0.30)','rgba(50,114,255,0.55)',"
+        "'rgba(50,114,255,0.80)','rgba(255,82,82,0.95)','rgba(255,61,61,1.00)']});"
         "}"
 
         "</script>"
-        '<script async defer src="https://maps.googleapis.com/maps/api/js?key='
+        '<script defer src="https://maps.googleapis.com/maps/api/js?key='
         + api_key + '&libraries=visualization&callback=initMap"></script>'
-        "</body></html>"
+        "</head><body><div id=\"map\"></div></body></html>"
     )

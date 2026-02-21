@@ -9,6 +9,7 @@
 
 import datetime
 import math
+import random
 import threading
 import time
 from typing import Optional
@@ -27,6 +28,9 @@ from vision_engine import AgriScoutEngine
 # ==============================================================================
 
 _MAP_AVAILABLE = False
+TractorSimulator = None
+DiseaseLog = None
+generate_map_html = None
 try:
     from map_engine import TractorSimulator, DiseaseLog, generate_map_html
     _MAP_AVAILABLE = True
@@ -138,7 +142,7 @@ section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p{color:#a0
 .mcard{flex:1;background:#10121a;border:1px solid #1a1d28;border-radius:10px;padding:0.65rem 0.85rem;text-align:center}
 .mcard .mc-label{font-size:0.58rem;color:#4a5060;text-transform:uppercase;letter-spacing:1.5px;font-weight:500}
 .mcard .mc-val{font-size:0.95rem;font-weight:600;color:#c8ccd6;font-family:'IBM Plex Mono',monospace;margin-top:2px}
-#MainMenu{visibility:hidden}footer{visibility:hidden}header{visibility:hidden}.stDeployButton{display:none}
+#MainMenu{visibility:hidden}footer{visibility:hidden}.stDeployButton{display:none}
 [data-testid="stMetric"]{display:none}
 </style>
 """
@@ -173,6 +177,12 @@ if "disease_logs" not in st.session_state:
     st.session_state.disease_logs = []
 if "last_log_time" not in st.session_state:
     st.session_state.last_log_time = 0.0
+if "live_map_refresh" not in st.session_state:
+    st.session_state.live_map_refresh = False
+if "map_interactive" not in st.session_state:
+    st.session_state.map_interactive = False
+if "map_zoom_level" not in st.session_state:
+    st.session_state.map_zoom_level = 17
 if "tractor_sim" not in st.session_state:
     if _MAP_AVAILABLE:
         st.session_state.tractor_sim = TractorSimulator()
@@ -338,22 +348,13 @@ def _haversine_m(lat1, lng1, lat2, lng2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
-# Default values (used if map_engine is unavailable)
-tractor_lat = 43.1580
-tractor_lng = -89.9120
-tractor_heading = 90.0
-heading_cardinal = "E"
-disease_count = 0
-
-sim = st.session_state.tractor_sim
-
-if sim is not None:
-    tractor_lat, tractor_lng, tractor_heading = sim.get_current_position()
+def _update_tractor_and_logs(simulator):
+    """Advance tractor simulation and append disease logs with debounce."""
+    tractor_lat, tractor_lng, tractor_heading = simulator.get_current_position()
 
     _CARDINALS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     heading_cardinal = _CARDINALS[int(((tractor_heading + 22.5) % 360) / 45)]
 
-    # Disease geo-logging with debounce
     det_label = st.session_state.last_class
     det_conf = st.session_state.last_conf
     is_disease_detected = (
@@ -383,6 +384,22 @@ if sim is not None:
             ))
             st.session_state.last_log_time = now
 
+    disease_count = len(st.session_state.disease_logs)
+    return tractor_lat, tractor_lng, tractor_heading, heading_cardinal, disease_count
+
+
+# Default values (used if map_engine is unavailable)
+tractor_lat = 43.1580
+tractor_lng = -89.9120
+tractor_heading = 90.0
+heading_cardinal = "E"
+disease_count = 0
+
+sim = st.session_state.tractor_sim
+
+if sim is not None:
+    tractor_lat, tractor_lng, tractor_heading, heading_cardinal, disease_count = _update_tractor_and_logs(sim)
+else:
     disease_count = len(st.session_state.disease_logs)
 
 # Pre-build HTML snippets (avoids escaped-quote issues in f-strings)
@@ -522,6 +539,20 @@ with st.sidebar:
     )
 
     st.markdown('<div style="height:6px"></div>', unsafe_allow_html=True)
+
+    st.session_state.live_map_refresh = False
+    st.caption("Live auto-refresh is disabled to prevent map flicker. Use the refresh button below.")
+    st.session_state.map_interactive = st.toggle(
+        "Enable map pan/zoom (precision mode)",
+        value=st.session_state.map_interactive,
+    )
+    st.session_state.map_zoom_level = st.slider(
+        "Map zoom level",
+        min_value=16,
+        max_value=22,
+        value=int(st.session_state.map_zoom_level),
+        step=1,
+    )
 
     # ---- Refresh button (updates map + telemetry) ----
     if st.button("🔄 Refresh Map & Telemetry", use_container_width=True):
@@ -690,42 +721,74 @@ st.markdown('</div>', unsafe_allow_html=True)
 # ║  GHOST TRACTOR MAP                                                        ║
 # ╚════════════════════════════════════════════════════════════════════════════╝
 
-st.markdown('<div class="map-panel">', unsafe_allow_html=True)
-st.markdown(
-    '<div class="map-header">'
-    '<div class="map-header-left">'
-    '<div class="map-icon">🗺️</div>'
-    '<span class="map-title">Ghost Tractor — Field Map</span></div>'
-    '<div class="map-stats">'
-    '<span class="map-stat">Detections: <strong>' + str(disease_count) + '</strong></span>'
-    '<span class="map-stat">Trail: ' + str(len(sim.path_history) if sim else 0) + ' pts</span>'
-    '<span class="map-stat">Mode: Lawnmower Grid</span>'
-    '</div></div>',
-    unsafe_allow_html=True,
-)
+def _render_map_panel(map_lat, map_lng, map_heading, map_disease_count):
+    sim_state = st.session_state.tractor_sim
+    map_trail_count = len(sim_state.path_history) if sim_state is not None else 0
+    map_height = 420
 
-if _MAP_AVAILABLE and sim is not None:
-    try:
-        map_html = generate_map_html(
-            api_key=GOOGLE_MAPS_API_KEY,
-            current_pos=(tractor_lat, tractor_lng),
-            heading=tractor_heading,
-            path_history=sim.path_history,
-            disease_logs=st.session_state.disease_logs,
-            field_center=sim.get_field_center(),
-            field_bounds=sim.get_field_bounds(),
-            map_height=420,
+    st.markdown('<div class="map-panel">', unsafe_allow_html=True)
+
+    if _MAP_AVAILABLE and sim_state is not None:
+        try:
+            st.markdown(
+                '<div class="map-header">'
+                '<div class="map-header-left">'
+                '<div class="map-icon">🗺️</div>'
+                '<span class="map-title">Ghost Tractor — Field Map</span></div>'
+                '<div class="map-stats">'
+                '<span class="map-stat">Detections: <strong>' + str(map_disease_count) + '</strong></span>'
+                '<span class="map-stat">Trail: ' + str(map_trail_count) + ' pts</span>'
+                '<span class="map-stat">View: ' + ('Interactive' if st.session_state.map_interactive else 'Locked') + ' Satellite</span>'
+                '</div></div>',
+                unsafe_allow_html=True,
+            )
+
+            map_html = generate_map_html(
+                api_key=GOOGLE_MAPS_API_KEY,
+                current_pos=(map_lat, map_lng),
+                heading=map_heading,
+                path_history=sim_state.path_history,
+                disease_logs=st.session_state.disease_logs,
+                field_center=sim_state.get_field_center(),
+                field_bounds=sim_state.get_field_bounds(),
+                map_height=map_height,
+                map_interactive=st.session_state.map_interactive,
+                map_zoom=st.session_state.map_zoom_level,
+            )
+            components.html(map_html, height=map_height, scrolling=False)
+        except Exception as e:
+            st.error(f"Map rendering error: {e}")
+    else:
+        st.markdown(
+            '<div class="map-header">'
+            '<div class="map-header-left">'
+            '<div class="map-icon">🗺️</div>'
+            '<span class="map-title">Ghost Tractor — Field Map</span></div>'
+            '<div class="map-stats">'
+            '<span class="map-stat">Detections: <strong>' + str(map_disease_count) + '</strong></span>'
+            '<span class="map-stat">Trail: ' + str(map_trail_count) + ' pts</span>'
+            '<span class="map-stat">View: ' + ('Interactive' if st.session_state.map_interactive else 'Locked') + ' Satellite</span>'
+            '</div></div>',
+            unsafe_allow_html=True,
         )
-        components.html(map_html, height=440, scrolling=False)
-    except Exception as e:
-        st.error(f"Map rendering error: {e}")
-else:
-    st.warning(
-        "**Map unavailable.** Make sure `map_engine.py` is in the same "
-        "directory as `app.py` and restart Streamlit."
+        st.warning(
+            "**Map unavailable.** Make sure `map_engine.py` is in the same "
+            "directory as `app.py` and restart Streamlit."
+        )
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+
+def render_map_panel_static():
+    _render_map_panel(
+        tractor_lat,
+        tractor_lng,
+        tractor_heading,
+        len(st.session_state.disease_logs),
     )
 
-st.markdown('</div>', unsafe_allow_html=True)
+
+render_map_panel_static()
 
 
 # ---- Bottom metrics ----
@@ -735,8 +798,30 @@ st.markdown(
     '<div class="mcard"><div class="mc-label">Runtime</div><div class="mc-val">ONNX 14</div></div>'
     '<div class="mcard"><div class="mc-label">Target</div><div class="mc-val">SDX Elite</div></div>'
     '<div class="mcard"><div class="mc-label">Detections</div>'
-    '<div class="mc-val" style="color:#ff6b6b">' + str(disease_count) + '</div></div>'
+    '<div class="mc-val" style="color:#ff6b6b">' + str(len(st.session_state.disease_logs)) + '</div></div>'
     '<div class="mcard"><div class="mc-label">Pipeline</div><div class="mc-val">Async v4</div></div>'
     '</div>',
     unsafe_allow_html=True,
 )
+# --- HEATMAP STRESS TESTER ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("🛠️ Dev Tools")
+if st.sidebar.button("🚨 Inject 10 Fake Detections"):
+    if DiseaseLog is None or st.session_state.tractor_sim is None:
+        st.sidebar.warning("Map simulator is unavailable; cannot inject test detections.")
+    else:
+        base_lat, base_lng, _ = st.session_state.tractor_sim.get_current_position()
+
+        for _ in range(10):
+            fake_lat = base_lat + random.uniform(-0.0005, 0.0005)
+            fake_lng = base_lng + random.uniform(-0.0005, 0.0005)
+
+            st.session_state.disease_logs.append(DiseaseLog(
+                lat=fake_lat,
+                lng=fake_lng,
+                label="Simulated Rust",
+                confidence=random.uniform(0.7, 0.99),
+                timestamp=time.time(),
+            ))
+        st.sidebar.success("Injected 10 points. Check the map!")
+        st.rerun()
