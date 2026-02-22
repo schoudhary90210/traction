@@ -1,0 +1,8 @@
+{
+  "session_id": "20260221-213353",
+  "farm_name": "North-40",
+  "status": "stopped",
+  "started_at": "2026-02-21T21:33:53",
+  "ended_at": "2026-02-21T21:34:43",
+  "events_csv": "dataset/live_sessions/20260221-213353/events.csv"
+}

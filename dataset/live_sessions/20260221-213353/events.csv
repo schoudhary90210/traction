@@ -1,0 +1,2 @@
+timestamp,date,time,session_id,farm_name,event_type,disease_label,confidence_pct,latitude,longitude,coord_source,map_layer,snapshot_path,note
+2026-02-21T21:33:53,2026-02-21,21:33:53,20260221-213353,North-40,inference,Waiting…,0.0,43.158,-89.9106714,tractor_sim,satellite,,

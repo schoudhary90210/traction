@@ -75,6 +75,9 @@ class AgriScoutEngine:
     def __init__(self, model_path: str = DEFAULT_MODEL_PATH):
         self.model_path = model_path
         self.session = None
+        self.available_providers = []
+        self.runtime_provider = "MockMode"
+        self.model_loaded = False
 
         # -- Temporal smoothing history --
         # Stores tuples of (label_str, confidence_float) for the last N frames.
@@ -86,19 +89,52 @@ class AgriScoutEngine:
             print("         Install with:  pip install onnxruntime")
             return
 
+        self.available_providers = ort.get_available_providers()
+
         if not os.path.isfile(model_path):
             print(f"[ENGINE] ⚠️  Model not found at '{model_path}' — running in MOCK mode.")
+            print(f"[ENGINE]    Available providers: {self.available_providers}")
             return
 
-        # Prefer CPU EP for broadest compatibility; swap to QNN EP on-device.
-        providers = ["CPUExecutionProvider"]
-        self.session = ort.InferenceSession(model_path, providers=providers)
+        provider_priority = [
+            "QNNExecutionProvider",     # Qualcomm NPU
+            "CUDAExecutionProvider",    # NVIDIA GPU
+            "DmlExecutionProvider",     # DirectML GPU (Windows)
+            "CoreMLExecutionProvider",  # Apple Neural/GPU
+            "CPUExecutionProvider",
+        ]
+        preferred = "CPUExecutionProvider"
+        for ep in provider_priority:
+            if ep in self.available_providers:
+                preferred = ep
+                break
+
+        try:
+            self.session = ort.InferenceSession(model_path, providers=[preferred])
+        except Exception as provider_err:
+            print(f"[ENGINE] ⚠️  Failed to start with {preferred}: {provider_err}")
+            print("[ENGINE]    Falling back to CPUExecutionProvider.")
+            self.session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
+
+        runtime_providers = self.session.get_providers()
+        self.runtime_provider = runtime_providers[0] if runtime_providers else preferred
+        self.model_loaded = True
 
         meta = self.session.get_inputs()[0]
         print(f"[ENGINE] ✅  Model loaded: {model_path}")
         print(f"[ENGINE]    Input : {meta.name}  shape={meta.shape}  dtype={meta.type}")
         print(f"[ENGINE]    Output: {self.session.get_outputs()[0].name}")
+        print(f"[ENGINE]    Available providers: {self.available_providers}")
+        print(f"[ENGINE]    Active provider   : {self.runtime_provider}")
         print(f"[ENGINE]    Temporal smoothing: majority vote over {SMOOTHING_WINDOW} frames")
+
+    def get_runtime_info(self) -> dict:
+        return {
+            "model_loaded": bool(self.model_loaded),
+            "runtime_provider": self.runtime_provider,
+            "available_providers": list(self.available_providers),
+            "smoothing_window": int(SMOOTHING_WINDOW),
+        }
 
 # ------------------------------------------------------------------
     #  Pre-processing (Perfect 1:1 UI Reticle Mapping)
