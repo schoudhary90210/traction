@@ -15,6 +15,7 @@ import threading
 import time
 from pathlib import Path
 import os
+from types import SimpleNamespace
 from typing import Optional
 
 import av
@@ -133,6 +134,69 @@ def _append_detection_to_log(disease_name: str, confidence: float, lat: float, l
         _DETECTION_LOG_PATH.write_text(json.dumps(existing, indent=2))
     except Exception:
         pass
+
+
+def _load_benji_detections() -> list:
+    """Load Benji's GPS disease detections from disease_detections.json.
+
+    - Maps 'disease' key to 'label' (DiseaseLog field name).
+    - Filters out entries with confidence < 0.40.
+    - Converts ISO timestamps to unix floats.
+    - Returns a list of DiseaseLog objects (SimpleNamespace fallback).
+    """
+    raw = _read_detection_log()
+    if not raw:
+        return []
+
+    results = []
+    for entry in raw:
+        conf = float(entry.get("confidence", 0.0))
+        if conf < 0.40:
+            continue
+
+        ts_str = entry.get("timestamp", "")
+        try:
+            ts_unix = datetime.datetime.fromisoformat(ts_str).timestamp()
+        except Exception:
+            ts_unix = 0.0
+
+        label = entry.get("disease", "Unknown")
+        lat = float(entry.get("lat", 0.0))
+        lng = float(entry.get("lng", 0.0))
+
+        if DiseaseLog is not None:
+            results.append(DiseaseLog(
+                lat=lat, lng=lng, label=label,
+                confidence=round(conf, 4), timestamp=ts_unix,
+            ))
+        else:
+            results.append(SimpleNamespace(
+                lat=lat, lng=lng, label=label,
+                confidence=round(conf, 4), timestamp=ts_unix,
+            ))
+    return results
+
+
+def _merge_benji_detections_into_session() -> None:
+    """Pre-populate session disease_logs with Benji's GPS detections (once)."""
+    if st.session_state.get("_benji_data_loaded"):
+        return
+    st.session_state._benji_data_loaded = True
+
+    benji_logs = _load_benji_detections()
+    if not benji_logs:
+        return
+
+    existing = st.session_state.get("disease_logs", [])
+    existing_ts = {getattr(d, "timestamp", None) for d in existing}
+
+    for log in benji_logs:
+        if log.timestamp not in existing_ts:
+            existing.append(log)
+            existing_ts.add(log.timestamp)
+
+    existing.sort(key=lambda d: d.timestamp)
+    st.session_state.disease_logs = existing
 
 
 def _generate_treatment_plan(disease_name: str, confidence: float, lat: float = 0.0, lng: float = 0.0) -> str:
@@ -1857,6 +1921,7 @@ def _render_help_page():
 # ╚════════════════════════════════════════════════════════════════════════════╝
 
 _apply_pending_actions()
+_merge_benji_detections_into_session()
 
 with st.sidebar:
 

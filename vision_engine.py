@@ -33,20 +33,29 @@ except ImportError:
 #  Constants
 # ==============================================================================
 
-# Must match the order produced by ImageFolder (alphabetical sort)
 CLASS_LABELS = [
+    "Healthy",
+    "Northern Leaf Blight",
     "Cercospora (Gray Leaf Spot)",
     "Common Rust",
-    "Northern Leaf Blight",
-    "Healthy",
 ]
 
 # ImageNet normalisation used during training
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 
-# Default model path (relative to project root)
-DEFAULT_MODEL_PATH = os.path.join("models", "agri_scout_mobilenetv2.onnx")
+# Model path: prefer ConvNeXt in project root, fall back to MobileNetV2
+_PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+_CONVNEXT_PATH = os.path.join(_PROJECT_ROOT, "agri_convnext.onnx")
+_MOBILENET_PATH = os.path.join(_PROJECT_ROOT, "models", "agri_scout_mobilenetv2.onnx")
+DEFAULT_MODEL_PATH = _CONVNEXT_PATH if os.path.isfile(_CONVNEXT_PATH) else _MOBILENET_PATH
+
+# Provider priority: Qualcomm NPU → CUDA GPU → CPU
+PROVIDER_PRIORITY = [
+    "QNNExecutionProvider",
+    "CUDAExecutionProvider",
+    "CPUExecutionProvider",
+]
 
 # Temporal smoothing window size.
 # 7 frames ≈ 1–2 seconds at the async pipeline's ~5 FPS inference rate.
@@ -90,8 +99,8 @@ class AgriScoutEngine:
             print(f"[ENGINE] [WARN] Model not found at '{model_path}' -- running in MOCK mode.")
             return
 
-        # Prefer CPU EP for broadest compatibility; swap to QNN EP on-device.
-        providers = ["CPUExecutionProvider"]
+        available = ort.get_available_providers()
+        providers = [p for p in PROVIDER_PRIORITY if p in available] or ["CPUExecutionProvider"]
         self.session = ort.InferenceSession(model_path, providers=providers)
 
         meta = self.session.get_inputs()[0]
@@ -209,6 +218,25 @@ class AgriScoutEngine:
     def reset_history(self) -> None:
         """Clear the prediction history. Useful on scene/field changes."""
         self.history.clear()
+
+    # ------------------------------------------------------------------
+    #  Runtime info (used by the dashboard compute telemetry panel)
+    # ------------------------------------------------------------------
+    def get_runtime_info(self) -> dict:
+        """Return a dict describing the current ONNX runtime configuration."""
+        if self.session is not None:
+            active_providers = self.session.get_providers()
+            runtime_provider = active_providers[0] if active_providers else "CPUExecutionProvider"
+        else:
+            active_providers = []
+            runtime_provider = "MockMode"
+        return {
+            "runtime_provider": runtime_provider,
+            "available_providers": active_providers,
+            "model_path": self.model_path,
+            "window_size": SMOOTHING_WINDOW,
+            "mock_mode": self.session is None,
+        }
 
     # ------------------------------------------------------------------
     #  Mock fallback (for UI development without the model file)
