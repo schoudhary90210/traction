@@ -23554,3 +23554,1229 @@
     "lat": 43.158,
     "lng": -89.91176
   },
+  {
+    "timestamp": "2026-02-21T20:09:21.508245",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5404,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:22.525662",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6005,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:23.525835",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5999,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:24.563310",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5918,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:25.571435",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5895,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:26.575968",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5363,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:27.614080",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5122,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:28.778492",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4944,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:29.809806",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4858,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:30.898417",
+    "disease": "Healthy",
+    "confidence": 0.5783,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:32.082827",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.512,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:33.161012",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5026,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:34.307591",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.532,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:35.478685",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5413,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:36.509430",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5071,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:37.666955",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.528,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:38.683713",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6074,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:39.838775",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6173,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:40.984873",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.616,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:41.987476",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6368,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:43.002850",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5792,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:44.150617",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5246,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:45.283246",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4157,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:46.292538",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4433,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:47.390947",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4823,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:48.413328",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5451,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:49.445804",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5335,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:50.488571",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.473,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:51.506324",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4684,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:52.667073",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6918,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:53.677510",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.662,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:54.723940",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:55.747522",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5754,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:56.903482",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.562,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:57.904462",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.595,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:58.914140",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6154,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:09:59.920799",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5486,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:00.924775",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4993,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:01.928503",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4899,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:02.931982",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4546,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:03.936276",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5067,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:04.947178",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5168,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:05.946149",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5242,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:06.958606",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5743,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:08.124389",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6236,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:09.128883",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5709,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:10.132680",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5114,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:11.149392",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4487,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:12.196112",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4351,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:13.219526",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.444,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:14.218521",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.441,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:15.225581",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.447,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:16.226262",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4816,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:17.229535",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4644,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:18.238965",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4951,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:19.257762",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4844,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:20.314031",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4678,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:21.323531",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4576,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:22.338574",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4772,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:23.406342",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5034,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:24.409655",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5369,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:25.419559",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5134,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:26.461269",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5196,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:27.474278",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5252,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:28.501958",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5297,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:29.501738",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5103,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:30.593947",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4825,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:31.611589",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4378,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:32.785594",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4352,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:33.929474",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4419,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:35.082554",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4382,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:36.090833",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4303,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:37.101402",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4247,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:38.141656",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4053,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:39.275414",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5563,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:40.276187",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.564,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:41.286335",
+    "disease": "Healthy",
+    "confidence": 0.6475,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:42.287731",
+    "disease": "Healthy",
+    "confidence": 0.5988,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:43.305078",
+    "disease": "Healthy",
+    "confidence": 0.5425,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:44.314127",
+    "disease": "Healthy",
+    "confidence": 0.5159,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:45.469365",
+    "disease": "Healthy",
+    "confidence": 0.4686,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:46.488683",
+    "disease": "Healthy",
+    "confidence": 0.4269,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:47.652182",
+    "disease": "Healthy",
+    "confidence": 0.4295,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:48.737960",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4388,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:49.861830",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.429,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:51.006694",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4096,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:52.062088",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4259,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:53.105887",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5536,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:54.151767",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5789,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:55.268595",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4304,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:56.275526",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4356,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:57.287039",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.4604,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:58.295200",
+    "disease": "Healthy",
+    "confidence": 0.5197,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:10:59.334422",
+    "disease": "Healthy",
+    "confidence": 0.4911,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:00.371996",
+    "disease": "Healthy",
+    "confidence": 0.5304,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:01.378031",
+    "disease": "Healthy",
+    "confidence": 0.6342,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:02.408527",
+    "disease": "Healthy",
+    "confidence": 0.6294,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:03.551442",
+    "disease": "Healthy",
+    "confidence": 0.605,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:04.637664",
+    "disease": "Healthy",
+    "confidence": 0.5971,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:05.689037",
+    "disease": "Healthy",
+    "confidence": 0.6043,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:06.746094",
+    "disease": "Healthy",
+    "confidence": 0.5968,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:07.771223",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5509,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:08.788534",
+    "disease": "Healthy",
+    "confidence": 0.6424,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:09.827178",
+    "disease": "Healthy",
+    "confidence": 0.6364,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:10.850721",
+    "disease": "Healthy",
+    "confidence": 0.6724,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:11.853510",
+    "disease": "Healthy",
+    "confidence": 0.6603,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:12.888184",
+    "disease": "Healthy",
+    "confidence": 0.7207,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:13.889963",
+    "disease": "Healthy",
+    "confidence": 0.7416,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:15.036060",
+    "disease": "Healthy",
+    "confidence": 0.7576,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:16.040216",
+    "disease": "Healthy",
+    "confidence": 0.6875,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:17.044655",
+    "disease": "Healthy",
+    "confidence": 0.6138,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:18.051897",
+    "disease": "Healthy",
+    "confidence": 0.5599,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:19.063371",
+    "disease": "Healthy",
+    "confidence": 0.6373,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:20.227808",
+    "disease": "Healthy",
+    "confidence": 0.7382,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:21.233012",
+    "disease": "Healthy",
+    "confidence": 0.7131,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:22.246887",
+    "disease": "Healthy",
+    "confidence": 0.6571,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:23.310231",
+    "disease": "Healthy",
+    "confidence": 0.6486,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:24.319391",
+    "disease": "Healthy",
+    "confidence": 0.6752,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:25.349137",
+    "disease": "Healthy",
+    "confidence": 0.606,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:26.370729",
+    "disease": "Healthy",
+    "confidence": 0.6199,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:27.405986",
+    "disease": "Healthy",
+    "confidence": 0.6288,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:28.410493",
+    "disease": "Healthy",
+    "confidence": 0.7104,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:29.578339",
+    "disease": "Healthy",
+    "confidence": 0.7529,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:30.595716",
+    "disease": "Healthy",
+    "confidence": 0.7391,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:31.595777",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5255,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:32.765985",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5767,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:33.802750",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.579,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:34.805305",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5768,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:35.811370",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6238,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:36.817225",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6276,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:37.818688",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5324,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:38.828438",
+    "disease": "Northern Leaf Blight",
+    "confidence": 0.5068,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:39.896980",
+    "disease": "Healthy",
+    "confidence": 0.4613,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:40.928801",
+    "disease": "Healthy",
+    "confidence": 0.4773,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:41.937683",
+    "disease": "Healthy",
+    "confidence": 0.4634,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:43.104363",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5483,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:44.103937",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6701,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:45.110490",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.668,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:46.116496",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6212,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:47.149362",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5952,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:48.292411",
+    "disease": "Healthy",
+    "confidence": 0.6465,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:49.294938",
+    "disease": "Healthy",
+    "confidence": 0.6065,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:50.298425",
+    "disease": "Healthy",
+    "confidence": 0.6715,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:51.305961",
+    "disease": "Healthy",
+    "confidence": 0.7199,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:52.331138",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5354,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:53.491094",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6001,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:54.514185",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5889,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:55.511039",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5267,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:56.521751",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4786,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:57.670051",
+    "disease": "Healthy",
+    "confidence": 0.5151,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:58.728058",
+    "disease": "Healthy",
+    "confidence": 0.5034,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:11:59.763244",
+    "disease": "Healthy",
+    "confidence": 0.5082,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:00.768943",
+    "disease": "Healthy",
+    "confidence": 0.5157,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:01.783725",
+    "disease": "Healthy",
+    "confidence": 0.4888,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:02.786383",
+    "disease": "Healthy",
+    "confidence": 0.5233,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:03.806451",
+    "disease": "Healthy",
+    "confidence": 0.49,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:04.955932",
+    "disease": "Healthy",
+    "confidence": 0.4709,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:05.966228",
+    "disease": "Healthy",
+    "confidence": 0.4743,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:07.003482",
+    "disease": "Healthy",
+    "confidence": 0.5375,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:08.008869",
+    "disease": "Healthy",
+    "confidence": 0.6288,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:09.165928",
+    "disease": "Healthy",
+    "confidence": 0.6175,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:10.329962",
+    "disease": "Healthy",
+    "confidence": 0.554,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:11.490080",
+    "disease": "Healthy",
+    "confidence": 0.5295,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:12.510481",
+    "disease": "Healthy",
+    "confidence": 0.5344,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:13.675316",
+    "disease": "Healthy",
+    "confidence": 0.4688,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:14.711128",
+    "disease": "Healthy",
+    "confidence": 0.4367,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:15.877127",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.4367,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:16.943137",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5372,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:17.949730",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.5986,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:18.974885",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6046,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:20.002411",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.6202,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:21.025164",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.7293,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:22.134884",
+    "disease": "Cercospora (Gray Leaf Spot)",
+    "confidence": 0.8115,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:23.291681",
+    "disease": "Healthy",
+    "confidence": 0.5657,
+    "lat": 43.158,
+    "lng": -89.91176
+  },
+  {
+    "timestamp": "2026-02-21T20:12:24.290077",
+    "disease": "Healthy",
+    "confidence": 0.567,
+    "lat": 43.158,
+    "lng": -89.91176
+  }
+]
