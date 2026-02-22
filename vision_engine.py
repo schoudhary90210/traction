@@ -82,12 +82,12 @@ class AgriScoutEngine:
         self.history: deque = deque(maxlen=SMOOTHING_WINDOW)
 
         if ort is None:
-            print("[ENGINE] ⚠️  onnxruntime not installed — running in MOCK mode.")
+            print("[ENGINE] [WARN] onnxruntime not installed -- running in MOCK mode.")
             print("         Install with:  pip install onnxruntime")
             return
 
         if not os.path.isfile(model_path):
-            print(f"[ENGINE] ⚠️  Model not found at '{model_path}' — running in MOCK mode.")
+            print(f"[ENGINE] [WARN] Model not found at '{model_path}' -- running in MOCK mode.")
             return
 
         # Prefer CPU EP for broadest compatibility; swap to QNN EP on-device.
@@ -95,7 +95,7 @@ class AgriScoutEngine:
         self.session = ort.InferenceSession(model_path, providers=providers)
 
         meta = self.session.get_inputs()[0]
-        print(f"[ENGINE] ✅  Model loaded: {model_path}")
+        print(f"[ENGINE] [OK]  Model loaded: {model_path}")
         print(f"[ENGINE]    Input : {meta.name}  shape={meta.shape}  dtype={meta.type}")
         print(f"[ENGINE]    Output: {self.session.get_outputs()[0].name}")
         print(f"[ENGINE]    Temporal smoothing: majority vote over {SMOOTHING_WINDOW} frames")

@@ -10,16 +10,17 @@
 import datetime
 import json
 import math
-import os
 import random
 import threading
 import time
 from pathlib import Path
+import os
 from typing import Optional
 
 import av
 import cv2
 import numpy as np
+import requests
 import streamlit as st
 import streamlit.components.v1 as components
 from streamlit_webrtc import WebRtcMode, webrtc_streamer
@@ -56,6 +57,12 @@ GOOGLE_MAPS_API_KEY = "AIzaSyAw2m1LGnhQ0C4jkyN5Z2aH5ADTPGfQZZ4"
 _LOG_COOLDOWN_SEC = 5.0
 _LOG_MIN_DISTANCE_M = 8.0
 _DISEASE_CONFIDENCE_THRESH = 0.85
+_LOG_CONFIDENCE_THRESH = 0.58
+_DEFAULT_FORCED_CONFIDENCE = 0.75
+_FORCE_DETECTION_ENABLED = False
+_FORCED_CONFIDENCE = _DEFAULT_FORCED_CONFIDENCE
+_DETECTION_LOG_PATH = Path(__file__).parent / "disease_detections.json"
+_OUTPUT_LOG_INTERVAL_SEC = 1.0
 _COLOR_SCHEMES = [
     "Night Field (Dark)",
     "Daylight Paper (Black on Light)",
@@ -70,6 +77,189 @@ _DEFAULT_FARM_WIDTH_M = globals().get("_DEFAULT_FARM_WIDTH_M", 800.0)
 _DEFAULT_FARM_HEIGHT_M = globals().get("_DEFAULT_FARM_HEIGHT_M", 708.0)
 _DEFAULT_DISEASE_SPOT_SIZE = 10.0
 _MAP_TYPES = ["roadmap", "hybrid", "satellite", "terrain"]
+
+# Ollama Configuration
+_OLLAMA_BASE_URL = "http://localhost:11434"
+_OLLAMA_MODEL = "mistral"  # Fast, efficient model (or use "mistral" when fully downloaded)
+_OLLAMA_TIMEOUT = 15  # seconds
+_OLLAMA_AVAILABLE = False
+
+# Check if Ollama is available
+try:
+    response = requests.get(f"{_OLLAMA_BASE_URL}/api/tags", timeout=2)
+    if response.status_code == 200:
+        _OLLAMA_AVAILABLE = True
+except Exception:
+    _OLLAMA_AVAILABLE = False
+
+
+def _write_detection_log(logs) -> None:
+    """Serialize all in-session disease detections to disk for AI context."""
+    import datetime
+    entries = []
+    for log in logs:
+        entries.append({
+            "timestamp": datetime.datetime.fromtimestamp(log.timestamp).isoformat(),
+            "disease": log.label,
+            "confidence": round(log.confidence, 4),
+            "lat": round(log.lat, 6),
+            "lng": round(log.lng, 6),
+        })
+    try:
+        _DETECTION_LOG_PATH.write_text(json.dumps(entries, indent=2))
+    except Exception:
+        pass
+
+
+def _read_detection_log() -> list:
+    """Read persisted disease detections from disk. Returns [] on any error."""
+    try:
+        return json.loads(_DETECTION_LOG_PATH.read_text())
+    except Exception:
+        return []
+
+
+def _append_detection_to_log(disease_name: str, confidence: float, lat: float, lng: float) -> None:
+    """Append a single detection entry to the on-disk JSON log file."""
+    existing = _read_detection_log()
+    existing.append({
+        "timestamp": datetime.datetime.now().isoformat(),
+        "disease": disease_name,
+        "confidence": round(confidence, 4),
+        "lat": round(lat, 6),
+        "lng": round(lng, 6),
+    })
+    try:
+        _DETECTION_LOG_PATH.write_text(json.dumps(existing, indent=2))
+    except Exception:
+        pass
+
+
+def _generate_treatment_plan(disease_name: str, confidence: float, lat: float = 0.0, lng: float = 0.0) -> str:
+    """
+    Generate a treatment plan for a detected disease using Ollama (offline AI).
+    Falls back to static advice if Ollama is unavailable or times out.
+
+    Args:
+        disease_name: Name of the detected disease (e.g., "Common Rust")
+        confidence: Detection confidence (0.0 to 1.0)
+        lat: GPS latitude where disease was detected (0.0 if unknown)
+        lng: GPS longitude where disease was detected (0.0 if unknown)
+
+    Returns:
+        HTML-formatted treatment advice
+    """
+    if not _OLLAMA_AVAILABLE:
+        return _get_fallback_treatment(disease_name, confidence, lat, lng)
+
+    location_line = f"\nGPS Location: {lat:.6f}, {lng:.6f}" if (lat or lng) else ""
+
+    # Build detection history context from the persisted log file
+    past_detections = _read_detection_log()
+    if past_detections:
+        history_lines = "\n".join(
+            f"  - {e['timestamp']}  {e['disease']} ({e['confidence']*100:.0f}%)  @ {e['lat']}, {e['lng']}"
+            for e in past_detections[-10:]  # last 10 entries
+        )
+        history_block = f"\n\nField Detection History (this session):\n{history_lines}"
+    else:
+        history_block = ""
+
+    prompt = f"""You are an agricultural expert providing crop disease treatment advice.
+
+Disease Detected: {disease_name}
+Confidence: {confidence * 100:.1f}%{location_line}{history_block}
+
+Provide a concise, actionable treatment plan (2-3 sentences max) including:
+1. Immediate action (fungicide/rotation/isolation)
+2. Prevention step
+3. Monitoring frequency
+
+Be specific and practical. Start directly with the advice."""
+
+    try:
+        response = requests.post(
+            f"{_OLLAMA_BASE_URL}/api/generate",
+            json={
+                "model": _OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.3,  # Lower temp for more consistent advice
+                    "top_k": 40,
+                    "top_p": 0.9,
+                    "num_predict": 150,  # Limit output length
+                }
+            },
+            timeout=_OLLAMA_TIMEOUT,
+        )
+        
+        if response.status_code == 200:
+            result = response.json()
+            treatment = result.get("response", "").strip()
+            if treatment:
+                # Format as HTML with emphasis
+                formatted = treatment.replace("\n", "<br>")
+                return (
+                    f'<span style="color:#00e676">💊 AI Treatment Plan:</span><br>'
+                    f'<span style="color:#c8ccd6">{formatted}</span>'
+                )
+    except requests.Timeout:
+        pass
+    except Exception as e:
+        pass
+    
+    return _get_fallback_treatment(disease_name, confidence)
+
+
+def _get_fallback_treatment(disease_name: str, confidence: float, lat: float = 0.0, lng: float = 0.0) -> str:
+    """Provide static treatment advice based on disease type."""
+    location_tag = (
+        f'<br><span style="color:#737c92;font-size:0.78rem">📍 Logged at GPS {lat:.6f}, {lng:.6f}</span>'
+        if (lat or lng) else ""
+    )
+    treatments = {
+        "common rust": (
+            '<span style="color:#00e676">💊 Treatment Plan:</span><br>'
+            '<strong>Immediate:</strong> Apply copper or sulfur-based fungicide every 7-10 days.<br>'
+            '<strong>Prevention:</strong> Remove infected leaves and improve air circulation.<br>'
+            '<strong>Monitor:</strong> Check daily; fungicide-resistant strains possible.'
+        ),
+        "northern leaf blight": (
+            '<span style="color:#00e676">💊 Treatment Plan:</span><br>'
+            '<strong>Immediate:</strong> Apply chlorothalonil or propiconazole fungicide within 48 hours.<br>'
+            '<strong>Prevention:</strong> Rotate crops yearly; ensure proper drainage and spacing.<br>'
+            '<strong>Monitor:</strong> Scout every 3-5 days during humid weather.'
+        ),
+        "cercospora": (
+            '<span style="color:#00e676">💊 Treatment Plan:</span><br>'
+            '<strong>Immediate:</strong> Apply mancozeb or azoxystrobin fungicide immediately.<br>'
+            '<strong>Prevention:</strong> Deploy drip irrigation; remove leaf debris.<br>'
+            '<strong>Monitor:</strong> Scout every 5-7 days; watch winter hosts.'
+        ),
+        "gray leaf spot": (
+            '<span style="color:#00e676">💊 Treatment Plan:</span><br>'
+            '<strong>Immediate:</strong> Apply triazole or strobilurin fungicide within 48 hours.<br>'
+            '<strong>Prevention:</strong> Use resistant hybrids; minimize overhead irrigation.<br>'
+            '<strong>Monitor:</strong> Scout every 3-5 days; fungicide rotation recommended.'
+        ),
+    }
+
+    disease_lower = disease_name.lower()
+    for key, advice in treatments.items():
+        if key in disease_lower:
+            return advice + location_tag
+
+    # Generic fallback
+    return (
+        '<span style="color:#00e676">💊 Treatment Plan:</span><br>'
+        f'<strong>Disease:</strong> {disease_name} (Confidence: {confidence * 100:.0f}%)<br>'
+        '<strong>Recommend:</strong> Contact local extension agent for specific treatment recommendations.'
+        + location_tag
+    )
+
+
+
 
 
 # ==============================================================================
@@ -244,6 +434,8 @@ if "disease_logs" not in st.session_state:
     st.session_state.disease_logs = []
 if "last_log_time" not in st.session_state:
     st.session_state.last_log_time = 0.0
+if "last_output_log_time" not in st.session_state:
+    st.session_state.last_output_log_time = 0.0
 if "live_map_refresh" not in st.session_state:
     st.session_state.live_map_refresh = False
 if "map_interactive" not in st.session_state:
@@ -298,7 +490,18 @@ if "settings_spot_size" not in st.session_state:
     st.session_state.settings_spot_size = int(round(st.session_state.disease_spot_size))
 else:
     st.session_state.settings_spot_size = int(max(3, min(24, int(st.session_state.settings_spot_size))))
+if "previous_detected_disease" not in st.session_state:
+    st.session_state.previous_detected_disease = ""
     st.session_state.disease_spot_size = float(st.session_state.settings_spot_size)
+if "manual_treatment_request" not in st.session_state:
+    st.session_state.manual_treatment_request = None
+if "manual_treatment_status" not in st.session_state:
+    st.session_state.manual_treatment_status = ""
+if "force_detection" not in st.session_state:
+    st.session_state.force_detection = False
+if "forced_confidence" not in st.session_state:
+    st.session_state.forced_confidence = float(_DEFAULT_FORCED_CONFIDENCE)
+st.session_state.forced_confidence = float(max(0.0, min(1.0, st.session_state.forced_confidence)))
 if "dv_marker_spot_size" not in st.session_state:
     st.session_state.dv_marker_spot_size = int(round(st.session_state.disease_spot_size))
 if "map_profiles" not in st.session_state:
@@ -314,6 +517,9 @@ if "map_profiles" not in st.session_state:
             "spot_size": float(_DEFAULT_DISEASE_SPOT_SIZE),
         }
     ]
+
+_FORCE_DETECTION_ENABLED = bool(st.session_state.force_detection)
+_FORCED_CONFIDENCE = float(st.session_state.forced_confidence)
 for profile in st.session_state.map_profiles:
     raw_map_type = str(profile.get("map_type", "roadmap")).lower().strip()
     profile["map_type"] = raw_map_type if raw_map_type in _MAP_TYPES else "roadmap"
@@ -368,9 +574,25 @@ _inference_count: int = 0
 _INFERENCE_COOLDOWN = 0.15
 _worker_running = False
 
+_output_log_lock = threading.Lock()
+_last_output_log_ts = 0.0
+_last_known_lat = float(_DEFAULT_FARM_LAT)
+_last_known_lng = float(_DEFAULT_FARM_LNG)
+
+# Thread-safe treatment state — written by treatment worker, read by main render thread
+_treatment_lock = threading.Lock()
+_treatment_pending_label: str = ""
+_treatment_pending_conf: float = 0.0
+_treatment_pending_lat: float = 0.0
+_treatment_pending_lng: float = 0.0
+_treatment_result_label: str = ""
+_treatment_result_text: str = ""
+_treatment_event = threading.Event()
+
 
 def _inference_worker():
     global _result_label, _result_conf, _result_latency_ms, _inference_count
+    global _last_output_log_ts, _last_known_lat, _last_known_lng
     global _frame_slot
 
     while _worker_running:
@@ -398,6 +620,12 @@ def _inference_worker():
             _result_latency_ms = latency
             _inference_count += 1
 
+        now = time.time()
+        if (now - _last_output_log_ts) >= _OUTPUT_LOG_INTERVAL_SEC:
+            with _output_log_lock:
+                _append_detection_to_log(label, conf, _last_known_lat, _last_known_lng)
+                _last_output_log_ts = now
+
         time.sleep(_INFERENCE_COOLDOWN)
 
 
@@ -410,6 +638,27 @@ def _ensure_worker_started():
     t.start()
 
 _ensure_worker_started()
+
+
+def _treatment_worker():
+    global _treatment_result_label, _treatment_result_text
+    while True:
+        _treatment_event.wait()
+        _treatment_event.clear()
+        with _treatment_lock:
+            label = _treatment_pending_label
+            conf = _treatment_pending_conf
+            lat = _treatment_pending_lat
+            lng = _treatment_pending_lng
+        if not label:
+            continue
+        text = _generate_treatment_plan(label, conf, lat, lng)
+        with _treatment_lock:
+            if _treatment_pending_label == label:  # still the current disease
+                _treatment_result_label = label
+                _treatment_result_text = text
+
+threading.Thread(target=_treatment_worker, daemon=True, name="agri-scout-treatment").start()
 
 
 # ==============================================================================
@@ -472,6 +721,7 @@ _callback_counter: int = 0
 
 def video_frame_callback(frame: av.VideoFrame) -> av.VideoFrame:
     global _frame_slot, _callback_counter
+    global _treatment_pending_label, _treatment_pending_conf, _treatment_result_label, _treatment_result_text
 
     img = frame.to_ndarray(format="bgr24")
 
@@ -487,9 +737,30 @@ def video_frame_callback(frame: av.VideoFrame) -> av.VideoFrame:
         latency = _result_latency_ms
         count = _inference_count
 
-    st.session_state.last_class = label
-    st.session_state.last_conf = conf
-    st.session_state.frame_count = count
+    force_active = _FORCE_DETECTION_ENABLED
+    forced_conf = _FORCED_CONFIDENCE
+    is_disease = (
+        "healthy" not in label.lower()
+        and "waiting" not in label.lower()
+        and "initial" not in label.lower()
+        and (force_active or conf >= _DISEASE_CONFIDENCE_THRESH)
+    )
+    conf_for_pending = max(conf, forced_conf) if force_active else conf
+
+    with _treatment_lock:
+        current_pending = _treatment_pending_label
+        current_result = _treatment_result_label
+
+    if is_disease and label != current_pending and label != current_result:
+        with _treatment_lock:
+            _treatment_pending_label = label
+            _treatment_pending_conf = conf_for_pending
+        _treatment_event.set()
+    elif not is_disease and current_pending:
+        # Cancel the pending request but keep any already-generated result displayed
+        with _treatment_lock:
+            _treatment_pending_label = ""
+            _treatment_pending_conf = 0.0
 
     img = draw_osd(img, label, conf, latency, count)
     return av.VideoFrame.from_ndarray(img, format="bgr24")
@@ -511,21 +782,35 @@ def _haversine_m(lat1, lng1, lat2, lng2):
 
 def _update_tractor_and_logs(simulator):
     """Advance tractor simulation and append disease logs with debounce."""
+    global _treatment_pending_lat, _treatment_pending_lng
+    global _last_known_lat, _last_known_lng
     tractor_lat, tractor_lng, tractor_heading = simulator.get_current_position()
+    _last_known_lat = tractor_lat
+    _last_known_lng = tractor_lng
 
     _CARDINALS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
     heading_cardinal = _CARDINALS[int(((tractor_heading + 22.5) % 360) / 45)]
 
-    det_label = st.session_state.last_class
-    det_conf = st.session_state.last_conf
+    # Read directly from thread-safe globals — session_state.last_class is stale here
+    # because _render_drive_page (which syncs it) hasn't run yet this render cycle.
+    with _result_lock:
+        det_label = _result_label
+        det_conf = _result_conf
+    force_active = bool(st.session_state.force_detection)
+    forced_conf = float(st.session_state.forced_confidence)
     is_disease_detected = (
         "healthy" not in det_label.lower()
         and "waiting" not in det_label.lower()
         and "initial" not in det_label.lower()
-        and det_conf >= _DISEASE_CONFIDENCE_THRESH
+        and (force_active or det_conf >= _LOG_CONFIDENCE_THRESH)
     )
+    det_conf_used = max(det_conf, forced_conf) if force_active else det_conf
 
     if is_disease_detected:
+        # Keep treatment globals up to date with the current GPS fix
+        with _treatment_lock:
+            _treatment_pending_lat = tractor_lat
+            _treatment_pending_lng = tractor_lng
         now = time.time()
         time_ok = (now - st.session_state.last_log_time) >= _LOG_COOLDOWN_SEC
 
@@ -540,13 +825,48 @@ def _update_tractor_and_logs(simulator):
                 lat=tractor_lat,
                 lng=tractor_lng,
                 label=det_label,
-                confidence=det_conf,
+                confidence=det_conf_used,
                 timestamp=now,
             ))
             st.session_state.last_log_time = now
+            _write_detection_log(st.session_state.disease_logs)
 
     disease_count = len(st.session_state.disease_logs)
     return tractor_lat, tractor_lng, tractor_heading, heading_cardinal, disease_count
+
+
+def _update_tractor_and_logs_no_sim(lat: float, lng: float) -> None:
+    """Disease logging for when the tractor simulator is unavailable (fixed GPS).
+    Uses time-only debounce — distance debounce is skipped because GPS is fixed."""
+    global _last_known_lat, _last_known_lng
+    _last_known_lat = lat
+    _last_known_lng = lng
+    with _result_lock:
+        det_label = _result_label
+        det_conf = _result_conf
+    force_active = bool(st.session_state.force_detection)
+    forced_conf = float(st.session_state.forced_confidence)
+    is_disease_detected = (
+        "healthy" not in det_label.lower()
+        and "waiting" not in det_label.lower()
+        and "initial" not in det_label.lower()
+        and (force_active or det_conf >= _LOG_CONFIDENCE_THRESH)
+    )
+    det_conf_used = max(det_conf, forced_conf) if force_active else det_conf
+    if not is_disease_detected:
+        return
+    now = time.time()
+    time_ok = (now - st.session_state.last_log_time) >= _LOG_COOLDOWN_SEC
+    if time_ok:
+        st.session_state.disease_logs.append(DiseaseLog(
+            lat=lat,
+            lng=lng,
+            label=det_label,
+            confidence=round(det_conf_used, 4),
+            timestamp=now,
+        ))
+        st.session_state.last_log_time = now
+        _write_detection_log(st.session_state.disease_logs)
 
 
 # Default values (used if map_engine is unavailable)
@@ -561,6 +881,8 @@ sim = st.session_state.tractor_sim
 if sim is not None:
     tractor_lat, tractor_lng, tractor_heading, heading_cardinal, disease_count = _update_tractor_and_logs(sim)
 else:
+    # No simulator — still run disease logging with fixed default GPS
+    _update_tractor_and_logs_no_sim(tractor_lat, tractor_lng)
     disease_count = len(st.session_state.disease_logs)
 
 # Pre-build HTML snippets (avoids escaped-quote issues in f-strings)
@@ -1350,6 +1672,53 @@ def _render_gallery_page():
                 st.markdown("---")
 
 
+def _render_logs_page():
+    st.markdown("### Log Output + GPS")
+
+    gps_left, gps_right = st.columns([2, 1])
+    active_lat = globals().get("_last_known_lat", tractor_lat)
+    active_lng = globals().get("_last_known_lng", tractor_lng)
+
+    with gps_left:
+        st.markdown(
+            '<div class="tcard">'
+            '<div class="tc-label">Current GPS Fix</div>'
+            '<div class="tc-val" style="font-size:0.95rem">'
+            + f"{active_lat:.6f}" + '°, ' + f"{active_lng:.6f}" + '°</div>'
+            '<div class="tc-sub">Heading: ' + f"{tractor_heading:.0f}" + '° ' + heading_cardinal + '</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    with gps_right:
+        log_count = len(_read_detection_log())
+        st.markdown(
+            '<div class="tcard">'
+            '<div class="tc-label">Log Entries</div>'
+            '<div class="tc-val">' + str(log_count) + '</div>'
+            '<div class="tc-sub">Session log file</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+
+    logs = _read_detection_log()
+    if logs:
+        rows = []
+        for entry in logs[-100:][::-1]:
+            rows.append({
+                "timestamp": entry.get("timestamp", ""),
+                "disease": entry.get("disease", ""),
+                "confidence": f"{float(entry.get('confidence', 0.0)) * 100:.1f}%",
+                "lat": f"{float(entry.get('lat', 0.0)):.6f}",
+                "lng": f"{float(entry.get('lng', 0.0)):.6f}",
+            })
+        st.dataframe(rows, use_container_width=True, hide_index=True)
+    else:
+        st.info("No detections logged yet. Start the camera feed to capture detections.")
+
+
 def _render_settings_page():
     st.markdown("### Settings")
     if st.session_state.settings_notice:
@@ -1521,6 +1890,21 @@ with st.sidebar:
     )
     st.caption("Display theme and farm location are now in the Settings tab.")
 
+    st.markdown('<div class="sidebar-section-label">Testing Overrides</div>', unsafe_allow_html=True)
+    st.toggle(
+        "Force disease detection (testing only)",
+        value=st.session_state.force_detection,
+        key="force_detection",
+    )
+    st.slider(
+        "Forced confidence",
+        min_value=0.50,
+        max_value=1.00,
+        value=float(st.session_state.forced_confidence),
+        step=0.01,
+        key="forced_confidence",
+    )
+
     # ---- Vehicle ----
     st.markdown('<div class="sidebar-section-label">Vehicle</div>', unsafe_allow_html=True)
 
@@ -1656,6 +2040,32 @@ if st.session_state.sunlight_mode:
     )
 
 def _render_drive_page():
+    global _treatment_result_label, _treatment_result_text
+    # Sync thread-safe inference globals → session_state (safe: main Streamlit thread only)
+    with _result_lock:
+        st.session_state.last_class = _result_label
+        st.session_state.last_conf = _result_conf
+        st.session_state.frame_count = _inference_count
+    with _treatment_lock:
+        st.session_state.advisory_text = _treatment_result_text if _treatment_result_label else ""
+
+    if st.session_state.manual_treatment_request:
+        req = st.session_state.manual_treatment_request
+        with st.spinner("Generating AI treatment plan..."):
+            treatment_plan = _generate_treatment_plan(
+                req["label"],
+                float(req["confidence"]),
+                float(req["lat"]),
+                float(req["lng"]),
+            )
+        with _treatment_lock:
+            _treatment_result_label = req["label"]
+            _treatment_result_text = treatment_plan
+        st.session_state.advisory_text = treatment_plan
+        st.session_state.previous_detected_disease = req["label"]
+        st.session_state.manual_treatment_request = None
+        st.session_state.manual_treatment_status = "done"
+
     label = st.session_state.last_class
     conf = st.session_state.last_conf
     count = st.session_state.frame_count
@@ -1853,6 +2263,31 @@ def _render_drive_page():
         unsafe_allow_html=True,
     )
 
+    # --- NEW: Manual Treatment Generation Button ---
+    btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
+    with btn_col2:
+        if st.button("🧪 Generate Treatment", use_container_width=True, key="generate_treatment_btn"):
+            recent = None
+            logs = _read_detection_log()
+            for entry in reversed(logs):
+                disease = str(entry.get("disease", "")).lower()
+                if disease and "healthy" not in disease and "waiting" not in disease and "initial" not in disease:
+                    recent = entry
+                    break
+            if recent:
+                st.session_state.manual_treatment_request = {
+                    "label": str(recent.get("disease", "")),
+                    "confidence": float(recent.get("confidence", 0.0)),
+                    "lat": float(recent.get("lat", 0.0)),
+                    "lng": float(recent.get("lng", 0.0)),
+                }
+                st.session_state.manual_treatment_status = "queued"
+            else:
+                st.warning("⚠️ No logged disease yet. Wait for a detection, then try again.")
+        if st.session_state.manual_treatment_status == "done":
+            st.success("✅ Treatment plan generated!")
+            st.session_state.manual_treatment_status = ""
+
     map_ctrl_left, map_ctrl_mid, map_ctrl_lat, map_ctrl_lng, map_ctrl_apply = st.columns([2, 2, 2, 2, 1.3])
     with map_ctrl_left:
         st.toggle("Precision map pan/zoom", value=st.session_state.map_interactive, key="map_interactive")
@@ -1974,8 +2409,16 @@ def _render_drive_page():
         )
 
 
-top_tab_drive, top_tab_data, top_tab_compute, top_tab_gallery, top_tab_settings, top_tab_help = st.tabs(
-    ["🚜 Drive", "📊 Data Visualization", "⚙️ NPU/GPU/CPU Power", "🖼️ Gallery", "⚙️ Settings", "🆘 Help + Demo"]
+top_tab_drive, top_tab_data, top_tab_logs, top_tab_compute, top_tab_gallery, top_tab_settings, top_tab_help = st.tabs(
+    [
+        "🚜 Drive",
+        "📊 Data Visualization",
+        "🧾 Logs + GPS",
+        "⚙️ NPU/GPU/CPU Power",
+        "🖼️ Gallery",
+        "⚙️ Settings",
+        "🆘 Help + Demo",
+    ]
 )
 
 with top_tab_drive:
@@ -1983,6 +2426,9 @@ with top_tab_drive:
 
 with top_tab_data:
     _render_data_visualization_page()
+
+with top_tab_logs:
+    _render_logs_page()
 
 with top_tab_compute:
     _render_compute_page()
