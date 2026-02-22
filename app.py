@@ -9,6 +9,7 @@
 
 import csv
 import datetime
+import importlib
 import json
 import math
 import os
@@ -18,6 +19,8 @@ import shutil
 import subprocess
 import threading
 import time
+import urllib.error
+import urllib.request
 from collections import deque
 from pathlib import Path
 from types import SimpleNamespace
@@ -86,6 +89,19 @@ def _load_maps_api_key():
     return key
 
 
+def _load_secret_or_env(key_name, default_value=""):
+    value = ""
+    try:
+        value = str(st.secrets.get(key_name, "")).strip()
+    except Exception:
+        value = ""
+    if not value:
+        value = str(os.getenv(key_name, "")).strip()
+    if not value:
+        return str(default_value)
+    return value
+
+
 GOOGLE_MAPS_API_KEY = _load_maps_api_key()
 
 _LOG_COOLDOWN_SEC = 5.0
@@ -115,7 +131,28 @@ _DEFAULT_DISEASE_SPOT_SIZE = 10.0
 _DETECTION_DATASET_ROOT = Path("dataset") / "detections"
 _LIVE_SESSIONS_ROOT = Path("dataset") / "live_sessions"
 _MAP_TYPES = ["roadmap", "hybrid", "satellite", "terrain"]
+_APP_HEADER_PATH = Path("assets") / "traction-header-brand.png"
 _APP_LOGO_PATH = Path("assets") / "traction-logo.svg"
+_DEFAULT_OLLAMA_MODEL = _load_secret_or_env("OLLAMA_MODEL", "llama3.1:8b")
+_DEFAULT_OLLAMA_BASE_URL = _load_secret_or_env("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+_LLM_MODULE_CANDIDATES = [
+    "llm_agent",
+    "ai_agent",
+    "advisory_agent",
+    "procedure_agent",
+    "treatment_agent",
+    "traction_llm",
+    "tractor_llm",
+]
+_LLM_FUNCTION_CANDIDATES = [
+    "generate_ai_procedure",
+    "generate_treatment_procedure",
+    "generate_treatment_advisory",
+    "generate_advisory",
+    "build_treatment_plan",
+    "build_procedure",
+    "run",
+]
 
 
 # ==============================================================================
@@ -435,6 +472,30 @@ if "recording_notice" not in st.session_state:
     st.session_state.recording_notice = ""
 if "sidebar_session_choice" not in st.session_state:
     st.session_state.sidebar_session_choice = ""
+if "ai_proc_notes" not in st.session_state:
+    st.session_state.ai_proc_notes = ""
+if "ai_proc_last_output" not in st.session_state:
+    st.session_state.ai_proc_last_output = ""
+if "ai_proc_last_status" not in st.session_state:
+    st.session_state.ai_proc_last_status = ""
+if "ai_proc_last_context_json" not in st.session_state:
+    st.session_state.ai_proc_last_context_json = ""
+if "ai_proc_last_generated_at" not in st.session_state:
+    st.session_state.ai_proc_last_generated_at = ""
+if "ai_proc_callable_name" not in st.session_state:
+    st.session_state.ai_proc_callable_name = ""
+if "ai_proc_ollama_base_url" not in st.session_state:
+    st.session_state.ai_proc_ollama_base_url = _DEFAULT_OLLAMA_BASE_URL
+if "ai_proc_ollama_model" not in st.session_state:
+    st.session_state.ai_proc_ollama_model = _DEFAULT_OLLAMA_MODEL
+if "ai_proc_ollama_timeout_sec" not in st.session_state:
+    st.session_state.ai_proc_ollama_timeout_sec = 35
+if "ai_proc_ollama_temperature" not in st.session_state:
+    st.session_state.ai_proc_ollama_temperature = 0.2
+if "ai_proc_ollama_top_p" not in st.session_state:
+    st.session_state.ai_proc_ollama_top_p = 0.9
+if "ai_proc_ollama_num_predict" not in st.session_state:
+    st.session_state.ai_proc_ollama_num_predict = 900
 
 
 # ╔════════════════════════════════════════════════════════════════════════════╗
@@ -1527,6 +1588,10 @@ def _build_theme_override_css():
     .stApp .stTabs [aria-selected="true"] {
       border-bottom-color: var(--ag-accent) !important;
     }
+    .stApp .stTabs [aria-selected="true"],
+    .stApp .stTabs [aria-selected="true"] * {
+      color: var(--ag-accent) !important;
+    }
     .stApp [data-baseweb="select"] > div,
     .stApp [data-baseweb="input"] > div,
     .stApp [data-baseweb="textarea"] > div {
@@ -1541,9 +1606,53 @@ def _build_theme_override_css():
       color: var(--ag-text) !important;
       -webkit-text-fill-color: var(--ag-text) !important;
     }
+    .stApp [data-baseweb="select"] svg,
+    .stApp [data-baseweb="input"] svg,
+    .stApp [data-baseweb="textarea"] svg {
+      fill: var(--ag-text) !important;
+      color: var(--ag-text) !important;
+    }
+    .stApp [data-baseweb="select"] [aria-hidden="true"] {
+      color: var(--ag-text) !important;
+    }
+    .stApp [data-baseweb="select"] [role="combobox"],
+    .stApp [data-baseweb="select"] [role="combobox"] * {
+      color: var(--ag-text) !important;
+      -webkit-text-fill-color: var(--ag-text) !important;
+    }
+    .stApp [data-testid="stSelectbox"] [data-baseweb="select"] > div {
+      box-shadow: none !important;
+    }
+    .stApp [data-testid="stRadio"] label,
+    .stApp [data-testid="stRadio"] label *,
+    .stApp [data-testid="stCheckbox"] label,
+    .stApp [data-testid="stCheckbox"] label *,
+    .stApp [data-testid="stToggle"] label,
+    .stApp [data-testid="stToggle"] label *,
+    .stApp [data-testid="stMultiSelect"] label,
+    .stApp [data-testid="stMultiSelect"] label * {
+      color: var(--ag-text) !important;
+    }
+    .stApp [data-testid="stSlider"] [data-baseweb="slider"] * {
+      color: var(--ag-text) !important;
+    }
+    .stApp [data-testid="stSliderTickBarMin"],
+    .stApp [data-testid="stSliderTickBarMax"] {
+      background: var(--ag-border) !important;
+    }
+    .stApp [data-testid="stSlider"] [role="slider"] {
+      background: var(--ag-accent) !important;
+      border-color: var(--ag-accent) !important;
+    }
     .stApp ::placeholder {
       color: var(--ag-muted) !important;
       opacity: 0.95 !important;
+    }
+    .stApp [data-testid="stNumberInputStepUp"],
+    .stApp [data-testid="stNumberInputStepDown"] {
+      color: var(--ag-text) !important;
+      border-color: var(--ag-border) !important;
+      background: var(--ag-panel-alt) !important;
     }
     .stApp [data-testid="stToolbar"] *,
     .stApp [data-testid="collapsedControl"] * {
@@ -1558,6 +1667,35 @@ def _build_theme_override_css():
     .stApp [data-baseweb="divider"] {
       background-color: var(--ag-border) !important;
       opacity: 1 !important;
+    }
+    .stApp [data-testid="stHorizontalBlock"] hr,
+    .stApp [data-testid="stVerticalBlock"] hr {
+      border-top-color: var(--ag-border) !important;
+    }
+    .stApp [data-testid="stExpander"] summary,
+    .stApp [data-testid="stExpander"] summary *,
+    .stApp [data-testid="stExpander"] details * {
+      color: var(--ag-text) !important;
+    }
+    .stApp [data-testid="stDataFrame"] *,
+    .stApp [data-testid="stTable"] * {
+      color: var(--ag-text) !important;
+    }
+    .stApp [data-testid="stDataFrame"] [role="columnheader"],
+    .stApp [data-testid="stDataFrame"] [role="row"] {
+      background: var(--ag-panel) !important;
+      border-color: var(--ag-border) !important;
+    }
+    .stApp [data-testid="stMetricLabel"] *,
+    .stApp [data-testid="stMetricValue"] * {
+      color: var(--ag-text) !important;
+    }
+    .stApp [data-testid="stAlertContainer"] * {
+      color: var(--ag-text) !important;
+    }
+    .stApp [data-testid="stFileUploaderDropzone"] * {
+      color: var(--ag-text) !important;
+      border-color: var(--ag-border) !important;
     }
     .stApp button[role="switch"] {
       background: var(--ag-panel-alt) !important;
@@ -1578,6 +1716,34 @@ def _build_theme_override_css():
     }
     .stApp [data-testid="stToggle"] p {
       color: var(--ag-text) !important;
+    }
+    /* BaseWeb popovers/menus often render in a portal outside .stApp. */
+    body [data-baseweb="popover"],
+    body [data-baseweb="popover"] *,
+    body [role="listbox"],
+    body [role="listbox"] *,
+    body [role="option"],
+    body [role="option"] *,
+    body ul[role="listbox"],
+    body ul[role="listbox"] li,
+    body [data-baseweb="menu"],
+    body [data-baseweb="menu"] * {
+      color: var(--ag-text) !important;
+      -webkit-text-fill-color: var(--ag-text) !important;
+      background-color: var(--ag-panel) !important;
+      border-color: var(--ag-border) !important;
+    }
+    body [data-baseweb="popover"] [aria-selected="true"],
+    body [role="option"][aria-selected="true"] {
+      background: var(--ag-panel-alt) !important;
+      color: var(--ag-accent) !important;
+      -webkit-text-fill-color: var(--ag-accent) !important;
+    }
+    body [data-baseweb="menu"] [data-highlighted="true"],
+    body [role="option"][data-highlighted="true"] {
+      background: var(--ag-panel-alt) !important;
+      color: var(--ag-text) !important;
+      -webkit-text-fill-color: var(--ag-text) !important;
     }
     """
 
@@ -2032,6 +2198,494 @@ def _render_native_bar(rows, index_col, value_col, label):
     st.bar_chart(chart_df, use_container_width=True)
 
 
+def _safe_float(value, default=0.0):
+    try:
+        return float(value)
+    except Exception:
+        return float(default)
+
+
+def _parse_timestamp(raw_value):
+    text = str(raw_value or "").strip()
+    if not text:
+        return None
+    text = text.replace("Z", "")
+    formats = [
+        "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+    ]
+    for fmt in formats:
+        try:
+            return datetime.datetime.strptime(text, fmt)
+        except Exception:
+            continue
+    try:
+        return datetime.datetime.fromisoformat(text)
+    except Exception:
+        return None
+
+
+def _extract_detection_timestamp(row):
+    ts = str(row.get("timestamp", "")).strip()
+    if ts:
+        return ts
+    date_part = str(row.get("date", "")).strip()
+    time_part = str(row.get("time", "")).strip()
+    if date_part and time_part:
+        return f"{date_part} {time_part}"
+    if date_part:
+        return date_part
+    return ""
+
+
+def _summarize_detection_rows(rows):
+    disease_counts = {}
+    disease_conf_totals = {}
+    hotspot_buckets = {}
+    conf_values = []
+    timestamps = []
+
+    for row in rows:
+        label = str(row.get("disease_label", row.get("label", ""))).strip()
+        if not label:
+            continue
+
+        conf_pct = _safe_float(
+            row.get("confidence_pct", row.get("disease_alert_pct", row.get("confidence", 0.0))),
+            default=0.0,
+        )
+        if conf_pct <= 1.0:
+            conf_pct *= 100.0
+        conf_pct = max(0.0, min(100.0, conf_pct))
+        conf_values.append(conf_pct)
+
+        disease_counts[label] = disease_counts.get(label, 0) + 1
+        disease_conf_totals[label] = disease_conf_totals.get(label, 0.0) + conf_pct
+
+        lat = _safe_float(row.get("latitude", row.get("lat", None)), default=float("nan"))
+        lng = _safe_float(row.get("longitude", row.get("lng", None)), default=float("nan"))
+        if math.isfinite(lat) and math.isfinite(lng):
+            hotspot_key = (round(lat, 4), round(lng, 4))
+            bucket = hotspot_buckets.get(hotspot_key)
+            if bucket is None:
+                bucket = {"count": 0, "max_conf_pct": 0.0, "disease_counts": {}}
+                hotspot_buckets[hotspot_key] = bucket
+            bucket["count"] += 1
+            bucket["max_conf_pct"] = max(float(bucket["max_conf_pct"]), conf_pct)
+            dc = bucket["disease_counts"]
+            dc[label] = dc.get(label, 0) + 1
+
+        ts = _parse_timestamp(_extract_detection_timestamp(row))
+        if ts is not None:
+            timestamps.append(ts)
+
+    diseases = []
+    for disease, count in disease_counts.items():
+        avg_conf = disease_conf_totals[disease] / max(1, count)
+        diseases.append(
+            {
+                "disease_label": disease,
+                "count": int(count),
+                "avg_conf_pct": round(avg_conf, 1),
+            }
+        )
+    diseases.sort(key=lambda x: x["count"], reverse=True)
+
+    hotspots = []
+    for (lat, lng), bucket in hotspot_buckets.items():
+        disease_items = sorted(bucket["disease_counts"].items(), key=lambda kv: kv[1], reverse=True)
+        dominant = disease_items[0][0] if disease_items else "Unknown"
+        hotspots.append(
+            {
+                "lat": float(lat),
+                "lng": float(lng),
+                "count": int(bucket["count"]),
+                "dominant_disease": dominant,
+                "max_conf_pct": round(float(bucket["max_conf_pct"]), 1),
+            }
+        )
+    hotspots.sort(key=lambda x: x["count"], reverse=True)
+
+    dominant_disease = diseases[0]["disease_label"] if diseases else "None"
+    avg_conf_pct = round(sum(conf_values) / max(1, len(conf_values)), 1) if conf_values else 0.0
+    max_conf_pct = round(max(conf_values), 1) if conf_values else 0.0
+    first_seen = min(timestamps).strftime("%Y-%m-%d %H:%M:%S") if timestamps else ""
+    last_seen = max(timestamps).strftime("%Y-%m-%d %H:%M:%S") if timestamps else ""
+
+    return {
+        "detection_count": int(sum(disease_counts.values())),
+        "diseases": diseases,
+        "hotspots": hotspots[:12],
+        "dominant_disease": dominant_disease,
+        "avg_conf_pct": avg_conf_pct,
+        "max_conf_pct": max_conf_pct,
+        "first_seen": first_seen,
+        "last_seen": last_seen,
+    }
+
+
+def _normalise_ollama_base_url(raw_url):
+    base = str(raw_url or "").strip().rstrip("/")
+    if not base:
+        base = _DEFAULT_OLLAMA_BASE_URL
+    if not base.startswith("http://") and not base.startswith("https://"):
+        base = "http://" + base
+    return base.rstrip("/")
+
+
+def _ollama_http_json(method, url, payload=None, timeout_sec=20):
+    data = None
+    headers = {"Accept": "application/json"}
+    if payload is not None:
+        data = json.dumps(payload).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+
+    req = urllib.request.Request(url=url, data=data, headers=headers, method=str(method).upper())
+    try:
+        with urllib.request.urlopen(req, timeout=max(2, int(timeout_sec))) as resp:
+            text = resp.read().decode("utf-8", errors="replace")
+    except urllib.error.HTTPError as e:
+        body = ""
+        try:
+            body = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body = str(e)
+        return None, f"HTTP {e.code}: {body[:300]}"
+    except Exception as e:
+        return None, str(e)
+
+    if not text.strip():
+        return {}, ""
+    try:
+        return json.loads(text), ""
+    except Exception:
+        return None, f"Invalid JSON from Ollama: {text[:240]}"
+
+
+def _check_ollama_status(base_url, timeout_sec=8):
+    base = _normalise_ollama_base_url(base_url)
+    payload, err = _ollama_http_json(
+        "GET",
+        f"{base}/api/tags",
+        payload=None,
+        timeout_sec=timeout_sec,
+    )
+    if payload is None:
+        return False, [], err
+
+    models = []
+    for m in payload.get("models", []) if isinstance(payload, dict) else []:
+        name = str(m.get("name", "")).strip()
+        if name:
+            models.append(name)
+    return True, models, ""
+
+
+def _run_ollama_command(args, timeout_sec=600):
+    if shutil.which("ollama") is None:
+        return False, "Ollama CLI not found in PATH."
+    cmd = ["ollama"] + [str(a) for a in args]
+    try:
+        cp = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=max(5, int(timeout_sec)),
+            check=False,
+        )
+    except Exception as e:
+        return False, str(e)
+
+    if cp.returncode != 0:
+        msg = (cp.stderr or cp.stdout or f"Command failed: {' '.join(cmd)}").strip()
+        return False, msg
+    out = (cp.stdout or cp.stderr or "").strip()
+    return True, out
+
+
+def _start_ollama_server(base_url):
+    ok, _, _ = _check_ollama_status(base_url, timeout_sec=4)
+    if ok:
+        return True, "Ollama server already running."
+    if shutil.which("ollama") is None:
+        return False, "Ollama CLI is not installed or not in PATH."
+
+    try:
+        subprocess.Popen(
+            ["ollama", "serve"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception as e:
+        return False, f"Failed to start Ollama server: {e}"
+
+    # Small warm-up wait and ping.
+    time.sleep(2.0)
+    ok, _, err = _check_ollama_status(base_url, timeout_sec=6)
+    if ok:
+        return True, "Ollama server started."
+    return False, f"Ollama server did not respond yet: {err}"
+
+
+def _pull_ollama_model(model_name):
+    model = str(model_name or "").strip()
+    if not model:
+        return False, "Model name is empty."
+    return _run_ollama_command(["pull", model], timeout_sec=1800)
+
+
+def _generate_with_ollama(prompt_text, model_name, base_url, timeout_sec=35, temperature=0.2, top_p=0.9, num_predict=900):
+    model = str(model_name or "").strip()
+    if not model:
+        return "", "Ollama model is empty."
+    base = _normalise_ollama_base_url(base_url)
+
+    payload = {
+        "model": model,
+        "prompt": prompt_text,
+        "stream": False,
+        "options": {
+            "temperature": float(max(0.0, min(1.5, float(temperature)))),
+            "top_p": float(max(0.05, min(1.0, float(top_p)))),
+            "num_predict": int(max(64, min(4000, int(num_predict)))),
+        },
+    }
+    resp, err = _ollama_http_json(
+        "POST",
+        f"{base}/api/generate",
+        payload=payload,
+        timeout_sec=timeout_sec,
+    )
+    if resp is None:
+        return "", err
+
+    text = ""
+    if isinstance(resp, dict):
+        text = str(resp.get("response", "")).strip()
+        if not text:
+            msg = resp.get("message")
+            if isinstance(msg, dict):
+                text = str(msg.get("content", "")).strip()
+    if not text:
+        return "", "Ollama returned no response text."
+    return text, ""
+
+
+def _llm_callable_specs():
+    specs = []
+    secret_key_names = ["LLM_ADVISOR_CALLABLE", "TRACTION_LLM_CALLABLE"]
+    for key_name in secret_key_names:
+        raw = ""
+        try:
+            raw = str(st.secrets.get(key_name, "")).strip()
+        except Exception:
+            raw = ""
+        if not raw:
+            raw = str(os.getenv(key_name, "")).strip()
+        if raw:
+            for part in raw.split(","):
+                spec = str(part).strip()
+                if spec:
+                    specs.append(spec)
+    return specs
+
+
+def _resolve_llm_callable():
+    # 1) Explicit module:function specs from secrets/env.
+    explicit_specs = _llm_callable_specs()
+    for spec in explicit_specs:
+        if ":" not in spec:
+            continue
+        mod_name, fn_name = [x.strip() for x in spec.split(":", 1)]
+        if not mod_name or not fn_name:
+            continue
+        try:
+            module = importlib.import_module(mod_name)
+        except Exception:
+            continue
+        fn = getattr(module, fn_name, None)
+        if callable(fn):
+            return fn, f"{mod_name}:{fn_name}"
+
+    # 2) Global functions in this file, if user added one directly.
+    for fn_name in _LLM_FUNCTION_CANDIDATES:
+        fn = globals().get(fn_name)
+        if callable(fn):
+            return fn, f"app.py:{fn_name}"
+
+    # 3) Auto-discover candidate module/function pairs.
+    for mod_name in _LLM_MODULE_CANDIDATES:
+        try:
+            module = importlib.import_module(mod_name)
+        except Exception:
+            continue
+        for fn_name in _LLM_FUNCTION_CANDIDATES:
+            fn = getattr(module, fn_name, None)
+            if callable(fn):
+                return fn, f"{mod_name}:{fn_name}"
+    return None, ""
+
+
+def _normalise_llm_output(raw):
+    if raw is None:
+        return ""
+    if isinstance(raw, str):
+        return raw.strip()
+    if isinstance(raw, dict):
+        for key in ["procedure", "advisory", "content", "text", "answer", "result"]:
+            val = raw.get(key)
+            if isinstance(val, str) and val.strip():
+                return val.strip()
+        try:
+            return json.dumps(raw, indent=2)
+        except Exception:
+            return str(raw)
+    if isinstance(raw, (list, tuple)):
+        return "\n".join(str(x) for x in raw)
+    return str(raw).strip()
+
+
+def _invoke_llm_callable(llm_fn, prompt_text, context_payload):
+    attempts = [
+        lambda: llm_fn(prompt_text=prompt_text, context=context_payload),
+        lambda: llm_fn(prompt=prompt_text, context=context_payload),
+        lambda: llm_fn(context_payload),
+        lambda: llm_fn(prompt_text),
+        lambda: llm_fn(context=context_payload),
+        lambda: llm_fn(prompt=prompt_text),
+        lambda: llm_fn(prompt_text, context_payload),
+    ]
+    errors = []
+    for invoke in attempts:
+        try:
+            raw = invoke()
+            text = _normalise_llm_output(raw)
+            if text:
+                return text, ""
+        except Exception as e:
+            errors.append(str(e))
+            continue
+    return "", " | ".join(errors[-3:])
+
+
+def _build_ai_procedure_prompt(context_payload):
+    return (
+        "You are an agronomy field advisor for farmers.\n"
+        "Generate a detailed, practical, and safety-aware action plan using the context JSON below.\n"
+        "Keep guidance concise but specific to location hotspots, disease mix, and severity.\n\n"
+        "Required output format in Markdown:\n"
+        "1) Situation Summary\n"
+        "2) Priority Zones (with coordinates and why)\n"
+        "3) Immediate Actions (0-24h)\n"
+        "4) Treatment Procedure (dosage/process placeholders are okay if uncertain)\n"
+        "5) 7-Day Monitoring Plan\n"
+        "6) Escalation Triggers\n"
+        "7) Safety and Worker Notes\n"
+        "8) Assumptions and Unknowns\n\n"
+        "Context JSON:\n"
+        + json.dumps(context_payload, indent=2)
+    )
+
+
+def _build_fallback_procedure(context_payload):
+    summary = context_payload.get("summary", {})
+    disease_rows = summary.get("diseases", [])
+    hotspot_rows = summary.get("hotspots", [])
+    top_disease = summary.get("dominant_disease", "Unknown")
+    detect_count = int(summary.get("detection_count", 0))
+    farm_name = str(context_payload.get("farm_name", _DEFAULT_FARM_NAME))
+    notes = str(context_payload.get("additional_notes", "")).strip()
+
+    hotspot_lines = []
+    for idx, h in enumerate(hotspot_rows[:4], start=1):
+        hotspot_lines.append(
+            f"- Zone {idx}: ({h['lat']:.4f}, {h['lng']:.4f}) • {h['count']} detections • "
+            f"{h['dominant_disease']} • max conf {h['max_conf_pct']:.1f}%"
+        )
+    hotspots_md = "\n".join(hotspot_lines) if hotspot_lines else "- No hotspot coordinates available yet."
+
+    disease_lines = []
+    for d in disease_rows[:5]:
+        disease_lines.append(f"- {d['disease_label']}: {d['count']} events (avg conf {d['avg_conf_pct']:.1f}%)")
+    diseases_md = "\n".join(disease_lines) if disease_lines else "- No disease detections available yet."
+
+    notes_md = notes if notes else "No additional operator notes were provided."
+    return (
+        f"### Situation Summary\n"
+        f"- Farm: **{farm_name}**\n"
+        f"- Detections reviewed: **{detect_count}**\n"
+        f"- Dominant disease: **{top_disease}**\n"
+        f"- Average confidence: **{summary.get('avg_conf_pct', 0.0):.1f}%**\n\n"
+        f"### Priority Zones\n"
+        f"{hotspots_md}\n\n"
+        f"### Immediate Actions (0-24h)\n"
+        f"1. Flag top hotspot rows for first-pass scouting and isolate likely spread corridors.\n"
+        f"2. Verify canopy symptoms in each hotspot before treatment.\n"
+        f"3. Prioritize severe clusters (higher counts/confidence) for same-day intervention.\n\n"
+        f"### Treatment Procedure\n"
+        f"1. Group interventions by disease type to avoid unnecessary mixed applications.\n"
+        f"2. Run a calibrated pass in hotspot-first order, then adjacent buffer rows.\n"
+        f"3. Record timestamp, operator, and treatment notes per hotspot for traceability.\n\n"
+        f"### 7-Day Monitoring Plan\n"
+        f"1. Re-scan hotspot rows daily for 3 days, then every other day.\n"
+        f"2. Compare new detections to baseline counts and confidence.\n"
+        f"3. Escalate if counts increase or if spread appears outside hotspot buffers.\n\n"
+        f"### Disease Mix\n"
+        f"{diseases_md}\n\n"
+        f"### Safety and Worker Notes\n"
+        f"- Follow label/PPE guidance, weather window limits, and equipment decontamination between zones.\n"
+        f"- Keep workers out of recently treated rows per re-entry interval.\n\n"
+        f"### Additional Notes\n"
+        f"{notes_md}\n"
+    )
+
+
+def _generate_ai_procedure(context_payload):
+    prompt_text = _build_ai_procedure_prompt(context_payload)
+    ollama_text, ollama_err = _generate_with_ollama(
+        prompt_text=prompt_text,
+        model_name=st.session_state.ai_proc_ollama_model,
+        base_url=st.session_state.ai_proc_ollama_base_url,
+        timeout_sec=int(st.session_state.ai_proc_ollama_timeout_sec),
+        temperature=float(st.session_state.ai_proc_ollama_temperature),
+        top_p=float(st.session_state.ai_proc_ollama_top_p),
+        num_predict=int(st.session_state.ai_proc_ollama_num_predict),
+    )
+    if ollama_text.strip():
+        status = f"Generated with Ollama model `{st.session_state.ai_proc_ollama_model}`."
+        return ollama_text.strip(), status, f"ollama:{st.session_state.ai_proc_ollama_model}"
+
+    llm_fn, callable_name = _resolve_llm_callable()
+    if llm_fn is not None:
+        response_text, err_text = _invoke_llm_callable(llm_fn, prompt_text, context_payload)
+        if response_text.strip():
+            status = (
+                f"Ollama unavailable ({ollama_err}). "
+                f"Generated with fallback callable `{callable_name}`."
+            )
+            return response_text.strip(), status, callable_name
+
+        fallback = _build_fallback_procedure(context_payload)
+        status = (
+            f"Ollama unavailable ({ollama_err}). "
+            f"LLM callable `{callable_name}` did not return text."
+            + (f" Last errors: {err_text}" if err_text else "")
+            + " Showing structured fallback procedure."
+        )
+        return fallback, status, callable_name
+
+    fallback = _build_fallback_procedure(context_payload)
+    status = (
+        "Ollama request failed"
+        + (f": {ollama_err}" if ollama_err else ".")
+        + " No secondary callable found. Showing structured fallback procedure."
+    )
+    return fallback, status, ""
+
+
 @st.cache_data(show_spinner=False, ttl=8)
 def _scan_gallery_media(limit=200):
     image_exts = {".png", ".jpg", ".jpeg", ".webp", ".gif"}
@@ -2270,148 +2924,138 @@ def _build_analytics_heatmap_html(
     )
 
 
-def _render_data_visualization_page():
-    st.markdown("### Farm Disease Heatmap (Sample Dataset)")
+def _risk_band_for_alert(alert_pct):
+    pct = float(alert_pct)
+    if pct >= 70.0:
+        return "High"
+    if pct >= 40.0:
+        return "Moderate"
+    return "Low"
 
-    st.markdown("#### Live Recording Dataset")
-    live_sessions = _list_live_recording_sessions(limit=80)
-    if live_sessions:
-        session_ids = [s["session_id"] for s in live_sessions]
-        live_selected = st.selectbox(
-            "Live session",
-            session_ids,
-            index=0,
-            key="dv_live_session_choice",
+
+def _normalise_detection_row_for_viz(row, source_name, default_lat, default_lng):
+    if not isinstance(row, dict):
+        return None
+
+    label = str(row.get("disease_label", row.get("label", "Detection"))).strip() or "Detection"
+    conf_pct = _safe_float(
+        row.get("confidence_pct", row.get("disease_alert_pct", row.get("confidence", 0.0))),
+        default=0.0,
+    )
+    if conf_pct <= 1.0:
+        conf_pct *= 100.0
+    conf_pct = max(0.0, min(100.0, conf_pct))
+
+    lat = _safe_float(row.get("latitude", row.get("lat", default_lat)), default=default_lat)
+    lng = _safe_float(row.get("longitude", row.get("lng", default_lng)), default=default_lng)
+    if not math.isfinite(lat) or not math.isfinite(lng):
+        return None
+    lat = max(-85.0, min(85.0, lat))
+    lng = max(-179.9999, min(179.9999, lng))
+
+    risk_band = str(row.get("risk_band", "")).strip()
+    if risk_band not in {"Low", "Moderate", "High"}:
+        risk_band = _risk_band_for_alert(conf_pct)
+
+    zone = str(row.get("zone", row.get("coord_source", ""))).strip()
+    if not zone:
+        zone_seed = int(abs(lat * 10_000.0) + abs(lng * 10_000.0))
+        zone = "Z" + str(1 + (zone_seed % 8))
+
+    timestamp = _extract_detection_timestamp(row)
+    if not timestamp:
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    signature = f"{label}|{lat:.5f}|{lng:.5f}|{timestamp}|{source_name}"
+    signature_sum = 0
+    for idx, ch in enumerate(signature[:120]):
+        signature_sum += (idx + 1) * ord(ch)
+
+    moisture = max(20.0, min(99.0, 38.0 + (conf_pct * 0.40) + ((signature_sum % 17) - 8)))
+    humidity = max(25.0, min(100.0, 46.0 + (conf_pct * 0.35) + ((signature_sum % 15) - 7)))
+    temp_c = max(8.0, min(44.0, 18.0 + ((signature_sum % 13) * 0.95) + ((100.0 - conf_pct) * 0.03)))
+    crop_stress = max(5.0, min(100.0, 14.0 + (conf_pct * 0.58) + ((signature_sum % 21) - 10)))
+
+    return {
+        "lat": round(lat, 7),
+        "lng": round(lng, 7),
+        "disease_label": label,
+        "disease_alert_pct": round(conf_pct, 1),
+        "moisture_pct": round(moisture, 1),
+        "humidity_pct": round(humidity, 1),
+        "temp_c": round(temp_c, 1),
+        "crop_stress_pct": round(crop_stress, 1),
+        "risk_band": risk_band,
+        "zone": zone,
+        "timestamp": timestamp,
+        "source": str(source_name),
+    }
+
+
+def _normalise_detection_rows_for_viz(rows, source_name, default_lat, default_lng):
+    normalised = []
+    for row in rows:
+        item = _normalise_detection_row_for_viz(
+            row=row,
+            source_name=source_name,
+            default_lat=default_lat,
+            default_lng=default_lng,
         )
-        live_meta = next((s for s in live_sessions if s["session_id"] == live_selected), live_sessions[0])
-        live_events = _read_live_session_events(live_selected, limit_rows=5000)
-        live_detections = [r for r in live_events if str(r.get("event_type", "")).lower() == "detection"]
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Session", live_selected)
-        m2.metric("Farm", str(live_meta.get("farm_name", _DEFAULT_FARM_NAME)))
-        m3.metric("Events", int(live_meta.get("events_count", len(live_events))))
-        m4.metric("Snapshots", int(live_meta.get("captures_count", 0)))
-        session_video_path = _resolve_session_video_path(live_selected, live_meta)
-        session_frame_count = int(live_meta.get("video_frame_count", 0) or 0)
-        if session_video_path:
-            st.caption(
-                f"Session video: `{session_video_path}`"
-                f" • frames: {session_frame_count}"
-                f" • size: {float(live_meta.get('video_size_kb', 0.0)):.1f} KB"
-            )
-            st.video(session_video_path)
-        else:
-            st.caption("No session video file found yet for this session.")
+        if item is not None:
+            normalised.append(item)
+    normalised.sort(key=lambda x: x["disease_alert_pct"], reverse=True)
+    return normalised
 
-        if live_detections:
-            live_points = []
-            for r in live_detections:
-                try:
-                    lat = float(r.get("latitude", st.session_state.active_farm_lat))
-                    lng = float(r.get("longitude", st.session_state.active_farm_lng))
-                    conf_pct = float(r.get("confidence_pct", 0.0))
-                except Exception:
-                    continue
-                live_points.append(
-                    {
-                        "lat": lat,
-                        "lng": lng,
-                        "disease_label": str(r.get("disease_label", "Detection")),
-                        "disease_alert_pct": max(0.0, min(100.0, conf_pct)),
-                        "risk_band": "High" if conf_pct >= 70 else ("Moderate" if conf_pct >= 40 else "Low"),
-                        "zone": str(r.get("coord_source", "session")),
-                    }
-                )
-            if live_points:
-                center_lat_live = sum(p["lat"] for p in live_points) / max(1, len(live_points))
-                center_lng_live = sum(p["lng"] for p in live_points) / max(1, len(live_points))
-                live_map_html = _build_analytics_heatmap_html(
-                    api_key=GOOGLE_MAPS_API_KEY,
-                    center_lat=float(center_lat_live),
-                    center_lng=float(center_lng_live),
-                    points=live_points,
-                    map_height=420,
-                    map_type=_coerce_map_type(st.session_state.map_base_type),
-                    heat_opacity=0.75,
-                    heat_radius=30,
-                    marker_threshold=55.0,
-                    marker_scale=float(st.session_state.disease_spot_size),
-                )
-                components.html(live_map_html, height=440, scrolling=False)
 
-            st.dataframe(
-                [
-                    {
-                        "Time": r.get("time", ""),
-                        "Label": r.get("disease_label", ""),
-                        "Confidence %": r.get("confidence_pct", ""),
-                        "Lat": r.get("latitude", ""),
-                        "Lng": r.get("longitude", ""),
-                        "Source": r.get("coord_source", ""),
-                        "Map": r.get("map_layer", ""),
-                        "Scheme": r.get("color_scheme", ""),
-                        "Snapshot": r.get("snapshot_path", ""),
-                    }
-                    for r in live_detections[:80]
-                ],
-                use_container_width=True,
-                hide_index=True,
-            )
-        else:
-            st.caption("No detection events logged for the selected live session yet.")
-    else:
-        st.caption("No live recording sessions found yet. Start the camera to create one.")
+def _render_data_visualization_page():
+    st.markdown("### Farm Disease Analytics")
+    st.caption(
+        "Switch the dataset source to analyze sample data, a specific recording session, "
+        "or farm/date detection tables. All charts and tables below follow that selection."
+    )
 
-    st.markdown("#### Farm/Date Detection Tables")
-    detection_files = _list_detection_dataset_files(limit=200)
-    if detection_files:
-        farm_options = sorted({f["farm_slug"] for f in detection_files})
-        selected_farm_slug = st.selectbox("Detection farm", farm_options, index=0, key="dv_det_farm_choice")
-        farm_rows = [f for f in detection_files if f["farm_slug"] == selected_farm_slug]
-        date_options = [f["date"] for f in farm_rows]
-        selected_date = st.selectbox("Detection date", date_options, index=0, key="dv_det_date_choice")
-        selected_file = next((f for f in farm_rows if f["date"] == selected_date), farm_rows[0])
-        det_rows = _read_detection_dataset_rows(selected_file["path"], limit_rows=3000)
-        st.caption(f"Dataset file: `{selected_file['path']}`")
-        if det_rows:
-            st.dataframe(
-                [
-                    {
-                        "Timestamp": r.get("timestamp", ""),
-                        "Farm": r.get("farm_name", ""),
-                        "Label": r.get("disease_label", ""),
-                        "Confidence %": r.get("confidence_pct", ""),
-                        "Lat": r.get("latitude", ""),
-                        "Lng": r.get("longitude", ""),
-                        "Source": r.get("coord_source", ""),
-                    }
-                    for r in det_rows[:250]
-                ],
-                use_container_width=True,
-                hide_index=True,
-            )
-        else:
-            st.caption("No rows found in the selected detection dataset.")
-    else:
-        st.caption("No farm/date detection datasets found yet.")
-
-    ctrl1, ctrl2, ctrl3, ctrl4, ctrl5 = st.columns(5)
-    sample_size = ctrl1.slider("Sample points", 120, 1200, 320, 40, key="dv_sample_size")
-    heat_opacity = ctrl2.slider("Heat opacity", 0.20, 1.00, 0.74, 0.02, key="dv_heat_opacity")
-    heat_radius = ctrl3.slider("Heat radius", 12, 64, 30, 2, key="dv_heat_radius")
-    marker_threshold = ctrl4.slider("Marker threshold %", 40, 95, 70, 1, key="dv_marker_threshold")
-    marker_spot_size = ctrl5.slider("Spot size", 3, 22, int(st.session_state.dv_marker_spot_size), 1, key="dv_marker_spot_size")
-
-    c5, c6 = st.columns(2)
-    map_type = c5.selectbox(
+    mode_options = [
+        "Sample dataset",
+        "Live recording detections",
+        "Farm/date detection dataset",
+        "Combined sample + live detections",
+    ]
+    src_col, map_col, spot_col = st.columns([1.8, 1.2, 1.1])
+    source_mode = src_col.selectbox(
+        "Graph/table data source",
+        mode_options,
+        index=0,
+        key="dv_dataset_source",
+    )
+    map_type = map_col.selectbox(
         "Basemap",
         _MAP_TYPES,
         index=_MAP_TYPES.index(_coerce_map_type(st.session_state.map_base_type)),
         key="dv_map_type",
     )
-    sample_seed = c6.number_input("Sample seed", min_value=1, max_value=9999, value=42, step=1, key="dv_sample_seed")
+    marker_spot_size = spot_col.slider(
+        "Spot size",
+        3,
+        22,
+        int(st.session_state.dv_marker_spot_size),
+        1,
+        key="dv_marker_spot_size",
+    )
 
-    dataset = _build_sample_farm_dataset(
+    h1, h2, h3 = st.columns(3)
+    heat_opacity = h1.slider("Heat opacity", 0.20, 1.00, 0.74, 0.02, key="dv_heat_opacity")
+    heat_radius = h2.slider("Heat radius", 12, 64, 30, 2, key="dv_heat_radius")
+    marker_threshold = h3.slider("Marker threshold %", 40, 95, 70, 1, key="dv_marker_threshold")
+
+    with st.expander("Sample dataset controls", expanded=(source_mode == "Sample dataset")):
+        s1, s2 = st.columns(2)
+        sample_size = s1.slider("Sample points", 120, 1200, 320, 40, key="dv_sample_size")
+        sample_seed = s2.number_input("Sample seed", min_value=1, max_value=9999, value=42, step=1, key="dv_sample_seed")
+        st.caption(
+            "Sample data is generated for readability demos and map/graph testing when field recordings are unavailable."
+        )
+
+    sample_dataset = _build_sample_farm_dataset(
         center_lat=float(st.session_state.active_farm_lat),
         center_lng=float(st.session_state.active_farm_lng),
         farm_width_m=float(st.session_state.active_farm_width_m),
@@ -2419,20 +3063,146 @@ def _render_data_visualization_page():
         n_points=int(sample_size),
         seed=int(sample_seed),
     )
-    if not dataset:
+    if not sample_dataset:
         st.warning("Sample dataset is empty. Adjust sample controls and try again.")
         return
 
-    st.caption(
-        f"Using generated sample dataset for `{st.session_state.active_farm_name}`"
-        f" • points: {len(dataset)} • seed: {int(sample_seed)}"
-    )
+    sample_dataset = [dict(row, source="sample") for row in sample_dataset]
+    live_dataset = []
+    farm_dataset = []
+    live_detection_rows = []
+    farm_det_rows = []
+    source_caption = ""
 
-    st.markdown("#### Map Heat Layer (Sample Dataset)")
+    live_sessions = _list_live_recording_sessions(limit=120)
+    if source_mode in {"Live recording detections", "Combined sample + live detections"}:
+        st.markdown("#### Recording Selection")
+        if live_sessions:
+            session_ids = [s["session_id"] for s in live_sessions]
+            default_idx = 0
+            active_sid = str(st.session_state.active_recording_id or "")
+            if active_sid and active_sid in session_ids:
+                default_idx = session_ids.index(active_sid)
+            selected_live_sid = st.selectbox(
+                "Recording session",
+                session_ids,
+                index=default_idx,
+                key="dv_live_session_choice",
+            )
+            live_meta = next((s for s in live_sessions if s["session_id"] == selected_live_sid), live_sessions[0])
+            live_events = _read_live_session_events(selected_live_sid, limit_rows=7000)
+            live_detection_rows = [
+                r for r in live_events if str(r.get("event_type", "")).strip().lower() == "detection"
+            ]
+            live_dataset = _normalise_detection_rows_for_viz(
+                rows=live_detection_rows,
+                source_name=f"live:{selected_live_sid}",
+                default_lat=float(st.session_state.active_farm_lat),
+                default_lng=float(st.session_state.active_farm_lng),
+            )
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Session", selected_live_sid)
+            m2.metric("Farm", str(live_meta.get("farm_name", _DEFAULT_FARM_NAME)))
+            m3.metric("Detections", len(live_dataset))
+            m4.metric("Snapshots", int(live_meta.get("captures_count", 0)))
+
+            session_video_path = _resolve_session_video_path(selected_live_sid, live_meta)
+            if session_video_path:
+                with st.expander("Selected recording media", expanded=False):
+                    st.caption(
+                        f"`{session_video_path}` • frames: {int(live_meta.get('video_frame_count', 0) or 0)} "
+                        f"• size: {float(live_meta.get('video_size_kb', 0.0)):.1f} KB"
+                    )
+                    st.video(session_video_path)
+            elif source_mode == "Live recording detections":
+                st.caption("No video file found for the selected recording session.")
+        else:
+            st.info("No live recording sessions found yet. Start camera recording to generate session datasets.")
+
+    detection_files = _list_detection_dataset_files(limit=250)
+    if source_mode == "Farm/date detection dataset":
+        st.markdown("#### Farm/Date Dataset Selection")
+        if detection_files:
+            farm_options = sorted({f["farm_slug"] for f in detection_files})
+            selected_farm_slug = st.selectbox(
+                "Detection farm",
+                farm_options,
+                index=0,
+                key="dv_det_farm_choice",
+            )
+            farm_rows = [f for f in detection_files if f["farm_slug"] == selected_farm_slug]
+            date_options = [f["date"] for f in farm_rows]
+            selected_date = st.selectbox(
+                "Detection date",
+                date_options,
+                index=0,
+                key="dv_det_date_choice",
+            )
+            selected_file = next((f for f in farm_rows if f["date"] == selected_date), farm_rows[0])
+            farm_det_rows = _read_detection_dataset_rows(selected_file["path"], limit_rows=7000)
+            farm_dataset = _normalise_detection_rows_for_viz(
+                rows=farm_det_rows,
+                source_name=f"farm:{selected_farm_slug}:{selected_date}",
+                default_lat=float(st.session_state.active_farm_lat),
+                default_lng=float(st.session_state.active_farm_lng),
+            )
+            st.caption(f"Dataset file: `{selected_file['path']}` • rows: {len(farm_det_rows)}")
+        else:
+            st.info("No farm/date detection datasets found yet.")
+
+    if source_mode == "Sample dataset":
+        dataset = list(sample_dataset)
+        source_caption = (
+            f"Source: generated sample dataset for `{st.session_state.active_farm_name}` "
+            f"({len(sample_dataset)} rows, seed {int(sample_seed)})."
+        )
+    elif source_mode == "Live recording detections":
+        if live_dataset:
+            dataset = list(live_dataset)
+            source_caption = f"Source: live recording detections ({len(live_dataset)} rows)."
+        else:
+            dataset = list(sample_dataset)
+            source_caption = (
+                "No detection rows available for the selected recording. "
+                "Showing sample dataset so charts remain readable."
+            )
+    elif source_mode == "Farm/date detection dataset":
+        if farm_dataset:
+            dataset = list(farm_dataset)
+            source_caption = f"Source: farm/date detection dataset ({len(farm_dataset)} rows)."
+        else:
+            dataset = list(sample_dataset)
+            source_caption = (
+                "No usable rows in the selected farm/date dataset. "
+                "Showing sample dataset as fallback."
+            )
+    else:
+        if live_dataset:
+            dataset = list(live_dataset) + list(sample_dataset)
+            source_caption = (
+                f"Source: combined live detections ({len(live_dataset)}) + sample rows "
+                f"({len(sample_dataset)})."
+            )
+        else:
+            dataset = list(sample_dataset)
+            source_caption = (
+                "No live detection rows available yet. Combined mode is using sample dataset only."
+            )
+
+    dataset.sort(key=lambda x: float(x.get("disease_alert_pct", 0.0)), reverse=True)
+    center_lat = float(st.session_state.active_farm_lat)
+    center_lng = float(st.session_state.active_farm_lng)
+    if dataset:
+        center_lat = sum(float(x["lat"]) for x in dataset) / max(1, len(dataset))
+        center_lng = sum(float(x["lng"]) for x in dataset) / max(1, len(dataset))
+
+    st.markdown("#### Map Heat Layer")
+    st.caption(source_caption)
     heatmap_html = _build_analytics_heatmap_html(
         api_key=GOOGLE_MAPS_API_KEY,
-        center_lat=float(st.session_state.active_farm_lat),
-        center_lng=float(st.session_state.active_farm_lng),
+        center_lat=center_lat,
+        center_lng=center_lng,
         points=dataset,
         map_height=560,
         map_type=map_type,
@@ -2443,12 +3213,20 @@ def _render_data_visualization_page():
     )
     components.html(heatmap_html, height=580, scrolling=False)
 
-    preview_rows = dataset[: min(10, len(dataset))]
+    alerts = [float(x["disease_alert_pct"]) for x in dataset]
+    high_alerts = [x for x in dataset if float(x["disease_alert_pct"]) >= 70.0]
+    avg_alert = (sum(alerts) / max(1, len(alerts))) if alerts else 0.0
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Rows In View", len(dataset))
+    m2.metric("Average Alert", f"{avg_alert:.1f}%")
+    m3.metric("High Alerts (>=70%)", len(high_alerts))
+    m4.metric("Active Farm", st.session_state.active_farm_name)
+
+    preview_rows = dataset[: min(14, len(dataset))]
     dataset_df = _to_dataframe(dataset)
-    st.markdown("#### Sample Spatial Data And Rows")
-    p1, p2 = st.columns([1.5, 1.1])
+    st.markdown("#### Selected Dataset: Spatial View And Rows")
+    p1, p2 = st.columns([1.55, 1.05])
     with p1:
-        st.markdown("#### Sample Spatial Plot")
         if dataset_df is not None and not dataset_df.empty:
             st.scatter_chart(
                 dataset_df,
@@ -2458,13 +3236,16 @@ def _render_data_visualization_page():
                 use_container_width=True,
             )
         else:
-            st.warning("Could not render scatter chart; showing sample rows instead.")
+            st.warning("Could not render spatial chart; showing rows instead.")
             st.dataframe(
                 [
                     {
+                        "Timestamp": r["timestamp"],
                         "Disease": r["disease_label"],
                         "Alert %": r["disease_alert_pct"],
+                        "Risk": r["risk_band"],
                         "Zone": r["zone"],
+                        "Source": r.get("source", ""),
                         "Lat": r["lat"],
                         "Lng": r["lng"],
                     }
@@ -2472,16 +3253,17 @@ def _render_data_visualization_page():
                 ],
                 use_container_width=True,
                 hide_index=True,
-                height=330,
+                height=350,
             )
     with p2:
-        st.markdown("#### Sample Rows")
         st.dataframe(
             [
                 {
+                    "Timestamp": r["timestamp"],
                     "Disease": r["disease_label"],
                     "Alert %": r["disease_alert_pct"],
                     "Zone": r["zone"],
+                    "Source": r.get("source", ""),
                     "Lat": r["lat"],
                     "Lng": r["lng"],
                 }
@@ -2489,17 +3271,8 @@ def _render_data_visualization_page():
             ],
             use_container_width=True,
             hide_index=True,
-            height=330,
+            height=350,
         )
-
-    alerts = [x["disease_alert_pct"] for x in dataset]
-    high_alerts = [x for x in dataset if x["disease_alert_pct"] >= 70]
-    avg_alert = sum(alerts) / max(1, len(alerts))
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Sample Events", len(dataset))
-    c2.metric("Avg Alert", f"{avg_alert:.1f}%")
-    c3.metric("High Alerts (>=70%)", len(high_alerts))
-    c4.metric("Farm", st.session_state.active_farm_name)
 
     disease_counts = {}
     disease_alert_sum = {}
@@ -2508,13 +3281,15 @@ def _render_data_visualization_page():
     env_totals = {"moisture_pct": 0.0, "humidity_pct": 0.0, "temp_c": 0.0, "crop_stress_pct": 0.0}
     for row in dataset:
         disease_counts[row["disease_label"]] = disease_counts.get(row["disease_label"], 0) + 1
-        disease_alert_sum[row["disease_label"]] = disease_alert_sum.get(row["disease_label"], 0.0) + row["disease_alert_pct"]
+        disease_alert_sum[row["disease_label"]] = (
+            disease_alert_sum.get(row["disease_label"], 0.0) + float(row["disease_alert_pct"])
+        )
         risk_counts[row["risk_band"]] = risk_counts.get(row["risk_band"], 0) + 1
         zone_counts[row["zone"]] = zone_counts.get(row["zone"], 0) + 1
-        env_totals["moisture_pct"] += row["moisture_pct"]
-        env_totals["humidity_pct"] += row["humidity_pct"]
-        env_totals["temp_c"] += row["temp_c"]
-        env_totals["crop_stress_pct"] += row["crop_stress_pct"]
+        env_totals["moisture_pct"] += float(row["moisture_pct"])
+        env_totals["humidity_pct"] += float(row["humidity_pct"])
+        env_totals["temp_c"] += float(row["temp_c"])
+        env_totals["crop_stress_pct"] += float(row["crop_stress_pct"])
 
     st.markdown("#### Disease Type Distribution Graphs")
     dist_mode = st.selectbox(
@@ -2576,7 +3351,7 @@ def _render_data_visualization_page():
         zone_rows = [{"Zone": z, "Count": c} for z, c in top_zones]
         _render_native_bar(zone_rows, "Zone", "Count", "Top zones")
 
-    st.markdown("#### Top Hotspots (Sample)")
+    st.markdown("#### Top Hotspots")
     st.dataframe(
         [
             {
@@ -2585,6 +3360,7 @@ def _render_data_visualization_page():
                 "Alert %": x["disease_alert_pct"],
                 "Risk": x["risk_band"],
                 "Zone": x["zone"],
+                "Source": x.get("source", ""),
                 "Moisture %": x["moisture_pct"],
                 "Humidity %": x["humidity_pct"],
                 "Temp C": x["temp_c"],
@@ -2596,6 +3372,359 @@ def _render_data_visualization_page():
         use_container_width=True,
         hide_index=True,
     )
+
+    with st.expander("Sample baseline rows", expanded=(source_mode == "Sample dataset")):
+        st.caption(
+            f"Generated sample dataset for `{st.session_state.active_farm_name}` "
+            f"• rows: {len(sample_dataset)} • seed: {int(sample_seed)}"
+        )
+        st.dataframe(
+            [
+                {
+                    "Timestamp": x["timestamp"],
+                    "Disease": x["disease_label"],
+                    "Alert %": x["disease_alert_pct"],
+                    "Risk": x["risk_band"],
+                    "Zone": x["zone"],
+                    "Lat": x["lat"],
+                    "Lng": x["lng"],
+                }
+                for x in sample_dataset[:60]
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    with st.expander("Raw source detections (selected source)", expanded=False):
+        if source_mode == "Live recording detections":
+            if live_detection_rows:
+                st.dataframe(
+                    [
+                        {
+                            "Time": r.get("time", ""),
+                            "Type": r.get("event_type", ""),
+                            "Label": r.get("disease_label", ""),
+                            "Confidence %": r.get("confidence_pct", ""),
+                            "Lat": r.get("latitude", ""),
+                            "Lng": r.get("longitude", ""),
+                            "Source": r.get("coord_source", ""),
+                            "Snapshot": r.get("snapshot_path", ""),
+                        }
+                        for r in live_detection_rows[:300]
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.caption("No detection rows in the selected live recording.")
+        elif source_mode == "Farm/date detection dataset":
+            if farm_det_rows:
+                st.dataframe(
+                    [
+                        {
+                            "Timestamp": r.get("timestamp", ""),
+                            "Farm": r.get("farm_name", ""),
+                            "Label": r.get("disease_label", ""),
+                            "Confidence %": r.get("confidence_pct", ""),
+                            "Lat": r.get("latitude", ""),
+                            "Lng": r.get("longitude", ""),
+                            "Source": r.get("coord_source", ""),
+                        }
+                        for r in farm_det_rows[:300]
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.caption("No rows in the selected farm/date file.")
+        elif source_mode == "Combined sample + live detections":
+            if live_detection_rows:
+                st.caption("Combined mode currently adds these live detections to the generated sample dataset.")
+                st.dataframe(
+                    [
+                        {
+                            "Time": r.get("time", ""),
+                            "Label": r.get("disease_label", ""),
+                            "Confidence %": r.get("confidence_pct", ""),
+                            "Lat": r.get("latitude", ""),
+                            "Lng": r.get("longitude", ""),
+                            "Source": r.get("coord_source", ""),
+                        }
+                        for r in live_detection_rows[:200]
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.caption("No live detections available yet; combined mode is sample-only for now.")
+        else:
+            st.caption("Sample mode uses generated rows (see the sample baseline expander above).")
+
+
+def _render_ai_procedure_page():
+    st.markdown("### AI Procedure")
+    st.caption(
+        "Generate a structured field procedure from disease detections, farm context, and operator notes."
+    )
+
+    st.markdown("#### Ollama (Primary LLM)")
+    o1, o2 = st.columns([1.5, 1.3])
+    o1.text_input(
+        "Ollama base URL",
+        key="ai_proc_ollama_base_url",
+        placeholder="http://127.0.0.1:11434",
+    )
+    o2.text_input(
+        "Ollama model",
+        key="ai_proc_ollama_model",
+        placeholder="llama3.1:8b",
+    )
+
+    o3, o4, o5 = st.columns([1.0, 1.0, 1.0])
+    o3.number_input(
+        "Timeout (sec)",
+        key="ai_proc_ollama_timeout_sec",
+        min_value=5,
+        max_value=240,
+        step=1,
+    )
+    o4.slider(
+        "Temperature",
+        min_value=0.0,
+        max_value=1.2,
+        value=float(st.session_state.ai_proc_ollama_temperature),
+        step=0.05,
+        key="ai_proc_ollama_temperature",
+    )
+    o5.slider(
+        "Top-p",
+        min_value=0.05,
+        max_value=1.0,
+        value=float(st.session_state.ai_proc_ollama_top_p),
+        step=0.05,
+        key="ai_proc_ollama_top_p",
+    )
+
+    st.number_input(
+        "Max generated tokens",
+        key="ai_proc_ollama_num_predict",
+        min_value=64,
+        max_value=4000,
+        step=64,
+    )
+
+    ac1, ac2, ac3 = st.columns(3)
+    if ac1.button("Check Ollama", use_container_width=True, key="ai_proc_check_ollama_btn"):
+        ok, models, err = _check_ollama_status(
+            st.session_state.ai_proc_ollama_base_url,
+            timeout_sec=int(st.session_state.ai_proc_ollama_timeout_sec),
+        )
+        if ok:
+            model_text = ", ".join(models[:8]) if models else "none detected"
+            st.session_state.ai_proc_last_status = f"Ollama online. Models: {model_text}"
+        else:
+            st.session_state.ai_proc_last_status = f"Ollama unavailable: {err}"
+        st.rerun()
+
+    if ac2.button("Start Ollama Server", use_container_width=True, key="ai_proc_start_ollama_btn"):
+        ok, msg = _start_ollama_server(st.session_state.ai_proc_ollama_base_url)
+        st.session_state.ai_proc_last_status = msg if ok else f"Start failed: {msg}"
+        st.rerun()
+
+    if ac3.button("Pull Model", use_container_width=True, key="ai_proc_pull_model_btn"):
+        with st.spinner(f"Pulling model `{st.session_state.ai_proc_ollama_model}`..."):
+            ok, msg = _pull_ollama_model(st.session_state.ai_proc_ollama_model)
+        st.session_state.ai_proc_last_status = msg if ok else f"Model pull failed: {msg}"
+        st.rerun()
+
+    live_ok, live_models, live_err = _check_ollama_status(
+        st.session_state.ai_proc_ollama_base_url,
+        timeout_sec=4,
+    )
+    if live_ok:
+        if live_models:
+            st.caption("Ollama online. Installed models: " + ", ".join(live_models[:10]))
+        else:
+            st.caption("Ollama online. No local models listed yet.")
+    else:
+        st.warning(
+            "Ollama is not reachable right now. Start it with `ollama serve` and pull a model, "
+            "or use the buttons above."
+        )
+    if st.session_state.ai_proc_last_status and not st.session_state.ai_proc_last_output:
+        st.caption(st.session_state.ai_proc_last_status)
+
+    source_mode = st.radio(
+        "Procedure data source",
+        [
+            "Latest live session detections",
+            "Farm/date detection dataset",
+            "Current dashboard detections",
+        ],
+        key="ai_proc_source_mode",
+        horizontal=True,
+    )
+
+    source_rows = []
+    source_label = ""
+    source_farm_name = (st.session_state.active_farm_name or _DEFAULT_FARM_NAME).strip() or _DEFAULT_FARM_NAME
+
+    if source_mode == "Latest live session detections":
+        sessions = _list_live_recording_sessions(limit=120)
+        if not sessions:
+            st.info("No live recording sessions available yet. Start camera recording to create one.")
+            return
+        session_ids = [s["session_id"] for s in sessions]
+        selected_sid = st.selectbox("Live session", session_ids, index=0, key="ai_proc_live_session_choice")
+        selected_meta = next((s for s in sessions if s["session_id"] == selected_sid), sessions[0])
+        rows = _read_live_session_events(selected_sid, limit_rows=7000)
+        source_rows = [r for r in rows if str(r.get("event_type", "")).lower() == "detection"]
+        source_label = f"live_session:{selected_sid}"
+        source_farm_name = str(selected_meta.get("farm_name", source_farm_name))
+        st.caption(
+            f"Session `{selected_sid}` • events: {int(selected_meta.get('events_count', 0))}"
+            f" • snapshots: {int(selected_meta.get('captures_count', 0))}"
+        )
+    elif source_mode == "Farm/date detection dataset":
+        det_files = _list_detection_dataset_files(limit=250)
+        if not det_files:
+            st.info("No farm/date detection datasets found yet.")
+            return
+        farm_options = sorted({f["farm_slug"] for f in det_files})
+        selected_slug = st.selectbox("Farm", farm_options, index=0, key="ai_proc_det_farm_slug")
+        farm_files = [f for f in det_files if f["farm_slug"] == selected_slug]
+        date_options = [f["date"] for f in farm_files]
+        selected_date = st.selectbox("Date", date_options, index=0, key="ai_proc_det_date")
+        selected_file = next((f for f in farm_files if f["date"] == selected_date), farm_files[0])
+        source_rows = _read_detection_dataset_rows(selected_file["path"], limit_rows=7000)
+        source_label = str(selected_file["path"])
+        if source_rows:
+            source_farm_name = str(source_rows[0].get("farm_name", source_farm_name))
+        st.caption(f"Dataset file: `{selected_file['path']}`")
+    else:
+        for ev in st.session_state.disease_logs:
+            source_rows.append(
+                {
+                    "timestamp": datetime.datetime.fromtimestamp(float(ev.timestamp)).strftime("%Y-%m-%dT%H:%M:%S"),
+                    "disease_label": str(ev.label),
+                    "confidence_pct": round(float(ev.confidence) * 100.0, 2),
+                    "latitude": round(float(ev.lat), 7),
+                    "longitude": round(float(ev.lng), 7),
+                    "coord_source": "dashboard",
+                }
+            )
+        source_label = "dashboard:disease_logs"
+
+    summary = _summarize_detection_rows(source_rows)
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Detections", int(summary["detection_count"]))
+    m2.metric("Unique diseases", len(summary["diseases"]))
+    m3.metric("Dominant disease", summary["dominant_disease"])
+    m4.metric("Avg confidence", f"{float(summary['avg_conf_pct']):.1f}%")
+    m5.metric("Max confidence", f"{float(summary['max_conf_pct']):.1f}%")
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("#### Disease Breakdown")
+        if summary["diseases"]:
+            st.dataframe(
+                [
+                    {
+                        "Disease": d["disease_label"],
+                        "Detections": d["count"],
+                        "Avg confidence %": d["avg_conf_pct"],
+                    }
+                    for d in summary["diseases"]
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.caption("No disease detections in this source yet.")
+    with c2:
+        st.markdown("#### Hotspot Summary")
+        if summary["hotspots"]:
+            st.dataframe(
+                [
+                    {
+                        "Lat": h["lat"],
+                        "Lng": h["lng"],
+                        "Detections": h["count"],
+                        "Dominant": h["dominant_disease"],
+                        "Max conf %": h["max_conf_pct"],
+                    }
+                    for h in summary["hotspots"]
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.caption("No hotspot coordinates available for this source.")
+
+    st.text_area(
+        "Additional field notes",
+        key="ai_proc_notes",
+        height=110,
+        placeholder="Example: southern rows had standing water after irrigation; focus on downwind spread.",
+    )
+    include_live_advisory = st.toggle(
+        "Include current advisory text in context",
+        value=True,
+        key="ai_proc_include_advisory",
+    )
+
+    context_payload = {
+        "source_mode": source_mode,
+        "source_label": source_label,
+        "farm_name": source_farm_name,
+        "farm_center_lat": round(float(st.session_state.active_farm_lat), 7),
+        "farm_center_lng": round(float(st.session_state.active_farm_lng), 7),
+        "farm_width_m": round(float(st.session_state.active_farm_width_m), 1),
+        "farm_height_m": round(float(st.session_state.active_farm_height_m), 1),
+        "map_layer": _coerce_map_type(st.session_state.map_base_type),
+        "color_scheme": str(st.session_state.color_scheme),
+        "sunlight_mode": bool(st.session_state.sunlight_mode),
+        "high_contrast_mode": bool(st.session_state.high_contrast_mode),
+        "invert_colors_mode": bool(st.session_state.invert_colors_mode),
+        "summary": summary,
+        "additional_notes": str(st.session_state.ai_proc_notes).strip(),
+        "existing_advisory_text": str(st.session_state.advisory_text).strip() if include_live_advisory else "",
+    }
+
+    gen_col, clear_col = st.columns([1.7, 1.0])
+    if gen_col.button("Generate AI Procedure", type="primary", use_container_width=True, key="ai_proc_generate_btn"):
+        output_text, status_text, callable_name = _generate_ai_procedure(context_payload)
+        st.session_state.ai_proc_last_output = output_text
+        st.session_state.ai_proc_last_status = status_text
+        st.session_state.ai_proc_callable_name = callable_name
+        st.session_state.ai_proc_last_context_json = json.dumps(context_payload, indent=2)
+        st.session_state.ai_proc_last_generated_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        st.rerun()
+
+    if clear_col.button("Clear Output", use_container_width=True, key="ai_proc_clear_btn"):
+        st.session_state.ai_proc_last_output = ""
+        st.session_state.ai_proc_last_status = ""
+        st.session_state.ai_proc_callable_name = ""
+        st.session_state.ai_proc_last_context_json = ""
+        st.session_state.ai_proc_last_generated_at = ""
+        st.rerun()
+
+    if st.session_state.ai_proc_last_output:
+        st.markdown("#### Generated Procedure")
+        status_bits = []
+        if st.session_state.ai_proc_last_status:
+            status_bits.append(str(st.session_state.ai_proc_last_status))
+        if st.session_state.ai_proc_last_generated_at:
+            status_bits.append(f"Generated: {st.session_state.ai_proc_last_generated_at}")
+        if st.session_state.ai_proc_callable_name:
+            status_bits.append(f"Callable: {st.session_state.ai_proc_callable_name}")
+        if status_bits:
+            st.caption(" • ".join(status_bits))
+        st.markdown(st.session_state.ai_proc_last_output)
+
+    with st.expander("Procedure Input Context (JSON)", expanded=False):
+        context_json = st.session_state.ai_proc_last_context_json or json.dumps(context_payload, indent=2)
+        st.code(context_json, language="json")
 
 
 def _render_compute_page():
@@ -2932,7 +4061,9 @@ def _render_help_page():
 
 
 def _render_app_title():
-    if _APP_LOGO_PATH.exists():
+    if _APP_HEADER_PATH.exists():
+        st.image(str(_APP_HEADER_PATH), width=240)
+    elif _APP_LOGO_PATH.exists():
         st.image(str(_APP_LOGO_PATH), width=92)
     else:
         st.markdown(
@@ -3076,23 +4207,31 @@ with st.sidebar:
         st.selectbox("Recent sessions", session_ids_sidebar, key="sidebar_session_choice")
 
     telemetry = _collect_compute_telemetry()
-    st.markdown('<div class="sidebar-section-label">Compute Snapshot</div>', unsafe_allow_html=True)
-    st.markdown(
-        '<div class="tcard">'
-        '<div class="tc-label">Runtime Provider</div>'
-        '<div class="tc-val" style="font-size:0.85rem">' + telemetry["runtime_provider"] + '</div>'
-        '<div class="tc-sub">FPS: ' + f"{telemetry['fps']:.2f}" + '  •  Avg latency: '
-        + f"{telemetry['latency_ms']:.1f} ms" + '</div>'
-        '</div>',
-        unsafe_allow_html=True,
+    st.markdown('<div class="sidebar-section-label">Live Hardware</div>', unsafe_allow_html=True)
+    hw1, hw2 = st.columns(2)
+    hw1.metric("CPU", f"{telemetry['cpu_total_pct']:.1f}%")
+    hw2.metric("RAM", f"{telemetry['mem_total_pct']:.1f}%")
+    hw3, hw4 = st.columns(2)
+    hw3.metric("GPU", f"{telemetry['gpu_util_pct']:.1f}%")
+    hw4.metric("NPU", f"{telemetry['npu_util_pct']:.1f}%")
+    st.progress(
+        max(0.0, min(1.0, telemetry["cpu_total_pct"] / 100.0)),
+        text=f"CPU load {telemetry['cpu_total_pct']:.1f}%",
+    )
+    st.progress(
+        max(0.0, min(1.0, telemetry["gpu_util_pct"] / 100.0)),
+        text=f"GPU load {telemetry['gpu_util_pct']:.1f}%",
+    )
+    st.progress(
+        max(0.0, min(1.0, telemetry["npu_util_pct"] / 100.0)),
+        text=f"NPU load {telemetry['npu_util_pct']:.1f}%",
     )
     st.markdown(
         '<div class="tcard">'
-        '<div class="tc-label">Utilization</div>'
-        '<div class="tc-val" style="font-size:0.82rem">CPU '
-        + f"{telemetry['cpu_total_pct']:.1f}%  •  GPU {telemetry['gpu_util_pct']:.1f}%  •  NPU {telemetry['npu_util_pct']:.1f}%"
-        + '</div>'
-        '<div class="tc-sub">Efficiency score: ' + f"{telemetry['efficiency_score']:.1f}/100" + '</div>'
+        '<div class="tc-label">Runtime</div>'
+        '<div class="tc-val" style="font-size:0.85rem">' + telemetry["runtime_provider"] + '</div>'
+        '<div class="tc-sub">FPS: ' + f"{telemetry['fps']:.2f}" + '  •  Avg latency: '
+        + f"{telemetry['latency_ms']:.1f} ms  •  Efficiency: {telemetry['efficiency_score']:.1f}/100</div>"
         '</div>',
         unsafe_allow_html=True,
     )
@@ -3447,8 +4586,16 @@ def _render_drive_page():
 
 _render_app_title()
 
-top_tab_drive, top_tab_data, top_tab_compute, top_tab_gallery, top_tab_settings, top_tab_help = st.tabs(
-    ["🚜 Drive", "📊 Data Visualization", "⚙️ NPU/GPU/CPU Power", "🖼️ Gallery", "⚙️ Settings", "🆘 Help + Demo"]
+top_tab_drive, top_tab_data, top_tab_ai_proc, top_tab_compute, top_tab_gallery, top_tab_settings, top_tab_help = st.tabs(
+    [
+        "🚜 Drive",
+        "📊 Data Visualization",
+        "🧬 AI Procedure",
+        "⚙️ NPU/GPU/CPU Power",
+        "🖼️ Gallery",
+        "⚙️ Settings",
+        "🆘 Help + Demo",
+    ]
 )
 
 with top_tab_drive:
@@ -3456,6 +4603,9 @@ with top_tab_drive:
 
 with top_tab_data:
     _render_data_visualization_page()
+
+with top_tab_ai_proc:
+    _render_ai_procedure_page()
 
 with top_tab_compute:
     _render_compute_page()
