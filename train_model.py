@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ================================================================================
- Agri-Scout — Offline Tractor-Mounted Crop Disease Detector
+ Traction — Offline Tractor-Mounted Crop Disease Detector
  Training Script for Qualcomm Edge AI Hackathon
 ================================================================================
  Target Hardware : Snapdragon X Elite NPU (via Qualcomm AI Hub)
@@ -340,7 +340,7 @@ def export_to_onnx(model: nn.Module, cfg: dict, device: torch.device) -> None:
 
 def main() -> None:
     print("=" * 68)
-    print("  Agri-Scout  |  MobileNetV2 Training Pipeline")
+    print("  Traction  |  MobileNetV2 Training Pipeline")
     print("  Target: Snapdragon X Elite NPU  •  Format: ONNX (opset 14)")
     print("=" * 68 + "\n")
 

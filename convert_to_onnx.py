@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ================================================================================
- Agri-Scout — Standalone ONNX Conversion Script
+ Traction — Standalone ONNX Conversion Script
 ================================================================================
  Purpose : Convert a trained MobileNetV2 .pth checkpoint to a FULL .onnx file
  Problem : PyTorch 2.x Dynamo exporter drops frozen (requires_grad=False)
@@ -194,7 +194,7 @@ def validate_export(onnx_path: Path) -> None:
 
 def main() -> None:
     print("=" * 60)
-    print("  Agri-Scout  |  .pth → .onnx Conversion")
+    print("  Traction  |  .pth → .onnx Conversion")
     print("  Fix for PyTorch 2.x Dynamo exporter dropping frozen weights")
     print("=" * 60 + "\n")
 

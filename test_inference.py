@@ -6,7 +6,7 @@ from PIL import Image
 #  CONFIGURATION
 # ==============================================================================
 MODEL_PATH = "models/agri_scout_mobilenetv2.onnx"
-IMAGE_PATH = "/Users/siddhant/Downloads/Agri-Scout/dataset/archive/test/test/CornCommonRust1.JPG"
+IMAGE_PATH = "/Users/siddhant/Downloads/Traction/dataset/archive/test/test/CornCommonRust1.JPG"
 
 # These must perfectly match the alphabetical order of your training folders
 CLASSES = [
@@ -49,7 +49,7 @@ def preprocess_image(image_path: str) -> np.ndarray:
 
 def main():
     print("=" * 50)
-    print(" Agri-Scout | Local ONNX Inference Test")
+    print(" Traction | Local ONNX Inference Test")
     print("=" * 50)
     
     print(f"\n[1] Loading model: {MODEL_PATH}")

@@ -1,5 +1,5 @@
 # ==============================================================================
-#  Agri-Scout v4 — Dependencies (all branches merged)
+#  Traction v4 — Dependencies (all branches merged)
 # ==============================================================================
 #  Install:  pip install -r requirements.txt
 #  Run:      streamlit run app.py

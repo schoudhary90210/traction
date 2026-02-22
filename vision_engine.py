@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ================================================================================
- Agri-Scout — Vision Engine (ONNX Runtime Inference Backend)
+ Traction — Vision Engine (ONNX Runtime Inference Backend)
 ================================================================================
  v2 — Temporal Smoothing via Majority Voting
 --------------------------------------------------------------------------------
@@ -12,7 +12,7 @@
            giving the dashboard a stable, "locked-in" result.
 ================================================================================
  API contract (unchanged — drop-in replacement):
-     engine = AgriScoutEngine("models/agri_scout_mobilenetv2.onnx")
+     engine = TractionEngine("models/agri_scout_mobilenetv2.onnx")
      label, confidence = engine.process_frame(frame_bgr)
 ================================================================================
 """
@@ -64,10 +64,10 @@ PROVIDER_PRIORITY = [
 SMOOTHING_WINDOW = 15
 
 # ==============================================================================
-#  AgriScoutEngine
+#  TractionEngine
 # ==============================================================================
 
-class AgriScoutEngine:
+class TractionEngine:
     """
     ONNX inference wrapper with temporal smoothing (majority voting).
 
@@ -77,7 +77,7 @@ class AgriScoutEngine:
     averaged confidence of all matching predictions in the window.
 
     Usage:
-        engine = AgriScoutEngine("models/agri_scout_mobilenetv2.onnx")
+        engine = TractionEngine("models/agri_scout_mobilenetv2.onnx")
         label, confidence = engine.process_frame(frame_bgr)
     """
 
@@ -247,3 +247,7 @@ class AgriScoutEngine:
         idx = np.random.choice(len(CLASS_LABELS), p=[0.25, 0.35, 0.20, 0.20])
         conf = np.random.uniform(0.78, 0.99)
         return CLASS_LABELS[idx], round(conf, 4)
+
+
+# Backwards-compatible alias
+AgriScoutEngine = TractionEngine

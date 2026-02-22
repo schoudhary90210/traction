@@ -3,7 +3,7 @@
 ## Start the app
 
 ```bash
-cd /Users/siddhant/Downloads/Agri-Scout
+cd /Users/siddhant/Downloads/Traction
 ./venv/bin/streamlit run app.py
 ```
 

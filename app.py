@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ================================================================================
- Agri-Scout — Real-Time Crop Disease Detection Dashboard  (v4 — Ghost Tractor)
+ Traction — Real-Time Crop Disease Detection Dashboard  (v4 — Ghost Tractor)
 ================================================================================
  Run with:   streamlit run app.py
 ================================================================================
@@ -26,7 +26,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 from streamlit_webrtc import WebRtcMode, webrtc_streamer
 
-from vision_engine import AgriScoutEngine
+from vision_engine import TractionEngine
 
 # ==============================================================================
 #  Safe import of map_engine (graceful fallback if file is missing)
@@ -331,7 +331,7 @@ def _get_fallback_treatment(disease_name: str, confidence: float, lat: float = 0
 # ==============================================================================
 
 st.set_page_config(
-    page_title="Agri-Scout | Qualcomm Edge AI",
+    page_title="Traction | Qualcomm Edge AI",
     page_icon="🌽",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -455,10 +455,10 @@ section[data-testid="stSidebar"] .stButton button{min-height:54px;font-size:1rem
 section[data-testid="stSidebar"] .stToggle label p{font-size:0.9rem}
 div[data-testid="stSidebar"] .stToggle{margin-bottom:0.15rem}
 button[kind="secondary"],button[kind="primary"]{border-radius:10px}
-#agri-scout-cam{border-radius:10px;overflow:hidden}
-[data-testid="stElementContainer"]:has(#agri-scout-cam) button{min-height:48px}
-[data-testid="stElementContainer"]:has(#agri-scout-cam) select{min-height:48px}
-[data-testid="stElementContainer"]:has(#agri-scout-cam){background:#0c0e14;border:1px solid #1a1d28;border-radius:12px;padding:0.6rem}
+#traction-cam{border-radius:10px;overflow:hidden}
+[data-testid="stElementContainer"]:has(#traction-cam) button{min-height:48px}
+[data-testid="stElementContainer"]:has(#traction-cam) select{min-height:48px}
+[data-testid="stElementContainer"]:has(#traction-cam){background:#0c0e14;border:1px solid #1a1d28;border-radius:12px;padding:0.6rem}
 @media (max-width: 1100px){
   .quick-row{flex-direction:column}
   .map-stats{flex-wrap:wrap;gap:8px}
@@ -475,9 +475,9 @@ st.markdown(_CSS, unsafe_allow_html=True)
 #  Singleton Engine
 # ==============================================================================
 
-@st.cache_resource(show_spinner="Loading Agri-Scout model…")
+@st.cache_resource(show_spinner="Loading Traction model…")
 def get_engine():
-    return AgriScoutEngine()
+    return TractionEngine()
 
 engine = get_engine()
 
@@ -698,7 +698,7 @@ def _ensure_worker_started():
     if _worker_running:
         return
     _worker_running = True
-    t = threading.Thread(target=_inference_worker, daemon=True, name="agri-scout-infer")
+    t = threading.Thread(target=_inference_worker, daemon=True, name="traction-infer")
     t.start()
 
 _ensure_worker_started()
@@ -722,7 +722,7 @@ def _treatment_worker():
                 _treatment_result_label = label
                 _treatment_result_text = text
 
-threading.Thread(target=_treatment_worker, daemon=True, name="agri-scout-treatment").start()
+threading.Thread(target=_treatment_worker, daemon=True, name="traction-treatment").start()
 
 
 # ==============================================================================
@@ -769,7 +769,7 @@ def draw_osd(frame, label, confidence, latency_ms, infer_count):
     cv2.putText(frame, ts, (w - 260, h - 14),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (140, 140, 140), 1, cv2.LINE_AA)
 
-    cv2.putText(frame, "AGRI-SCOUT  v4", (14, h - 14),
+    cv2.putText(frame, "TRACTION  v4", (14, h - 14),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (100, 160, 120), 1, cv2.LINE_AA)
 
     return frame
@@ -1072,7 +1072,7 @@ def _build_theme_override_css():
     .stApp{{background:var(--ag-app-bg) !important;color:var(--ag-text) !important;}}
     section[data-testid="stSidebar"]{{background:var(--ag-sidebar) !important;border-right:{border_width} solid var(--ag-border) !important;}}
     section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p{{color:var(--ag-muted) !important;}}
-    .hdr,.tcard,.det-panel.waiting,.advisory-panel,.adv-body,.map-panel,.mcard,.quick-card,[data-testid="stElementContainer"]:has(#agri-scout-cam){{background:var(--ag-panel) !important;border:{border_width} solid var(--ag-border) !important;}}
+    .hdr,.tcard,.det-panel.waiting,.advisory-panel,.adv-body,.map-panel,.mcard,.quick-card,[data-testid="stElementContainer"]:has(#traction-cam){{background:var(--ag-panel) !important;border:{border_width} solid var(--ag-border) !important;}}
     .feed-wrap{{background:var(--ag-panel-alt) !important;border:{border_width} solid var(--ag-border) !important;}}
     .hdr h1,.det-class,.tc-val,.quick-val,.adv-content,.adv-title,.map-title,.cab-alert-state,.cab-alert-meta{{color:var(--ag-text) !important;}}
     .tc-label,.tc-sub,.quick-label,.quick-sub,.feed-label,.adv-status,.adv-footer-item,.det-meta,.map-stat{{color:var(--ag-muted) !important;}}
@@ -1712,7 +1712,7 @@ def _render_gallery_page():
     items = _scan_gallery_media(limit=max(120, int(st.session_state.gallery_limit)))
     if source != "all":
         if source == "dataset":
-            items = [x for x in items if x["path"].startswith("dataset" + os.sep) or x["path"].startswith("Agri-Scout" + os.sep + "dataset")]
+            items = [x for x in items if x["path"].startswith("dataset" + os.sep) or x["path"].startswith("Traction" + os.sep + "dataset")]
         else:
             items = [x for x in items if x["path"].startswith("recordings" + os.sep) or x["path"].startswith("captures" + os.sep)]
     if media_type != "all":
@@ -1929,7 +1929,7 @@ with st.sidebar:
         '<div style="text-align:center;padding:0.6rem 0 0.2rem 0">'
         '<span style="font-size:1.4rem">🌽</span>'
         '<span style="font-size:0.9rem;font-weight:700;color:#eaedf3;'
-        'margin-left:8px;letter-spacing:-0.3px">Agri-Scout</span>'
+        'margin-left:8px;letter-spacing:-0.3px">Traction</span>'
         '<span style="font-size:0.55rem;color:#3d4250;margin-left:6px;'
         "font-family:'IBM Plex Mono',monospace\">v4.0</span>"
         '</div>',
@@ -2185,7 +2185,7 @@ def _render_drive_page():
         st.markdown(
             '<div class="hdr hdr-compact"><div class="hdr-left">'
             '<div class="hdr-logo">AS</div>'
-            '<div><h1 style="font-size:1.1rem">Agri-Scout</h1></div>'
+            '<div><h1 style="font-size:1.1rem">Traction</h1></div>'
             '</div><div class="hdr-right">'
             '<span class="hdr-chip chip-live"><span class="live-dot green"></span> Live Scan</span>'
             '</div></div>',
@@ -2195,7 +2195,7 @@ def _render_drive_page():
         st.markdown(
             '<div class="hdr"><div class="hdr-left">'
             '<div class="hdr-logo">AS</div>'
-            '<div><h1>Agri-Scout</h1>'
+            '<div><h1>Traction</h1>'
             '<div class="sub">Real-Time Crop Disease Detection System</div></div>'
             '</div><div class="hdr-right">'
             '<span class="hdr-chip chip-npu">Snapdragon X Elite</span>'
@@ -2218,7 +2218,7 @@ def _render_drive_page():
         )
 
         ctx = webrtc_streamer(
-            key="agri-scout-cam",
+            key="traction-cam",
             mode=WebRtcMode.SENDRECV,
             video_frame_callback=video_frame_callback,
             media_stream_constraints={"video": True, "audio": False},

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ================================================================================
- Agri-Scout — Map Engine  (Ghost Tractor Simulator + Google Maps Renderer)
+ Traction — Map Engine  (Ghost Tractor Simulator + Google Maps Renderer)
 ================================================================================
  Zero external dependencies beyond Python stdlib.
 
@@ -250,9 +250,9 @@ def generate_map_html(
         "strokeColor:'#08090c',strokeWeight:2,"
         "rotation:" + str(heading) + ","
         "anchor:new google.maps.Point(0,2.5)},"
-        "title:'Agri-Scout',zIndex:999});"
+        "title:'Traction',zIndex:999});"
         "var ti=new google.maps.InfoWindow({"
-        "content:'<div class=\"tl\">\\ud83d\\ude9c AGRI-SCOUT</div>',"
+        "content:'<div class=\"tl\">\\ud83d\\ude9c TRACTION</div>',"
         "disableAutoPan:true});"
         "ti.open(m,tm);"
 

@@ -1,4 +1,4 @@
-# Agri-Scout v4 — Real-Time Crop Disease Detection Dashboard
+# Traction v4 — Real-Time Crop Disease Detection Dashboard
 
 ## Quick Start
 
@@ -12,7 +12,7 @@ streamlit run app.py
 
 ## Offline AI Treatment Plans with Ollama
 
-Agri-Scout now includes **fast, offline AI treatment plan generation** using [Ollama](https://ollama.ai/). When a disease is detected, the system automatically generates actionable agricultural advice without cloud dependencies.
+Traction now includes **fast, offline AI treatment plan generation** using [Ollama](https://ollama.ai/). When a disease is detected, the system automatically generates actionable agricultural advice without cloud dependencies.
 
 ### Setup Ollama
 
