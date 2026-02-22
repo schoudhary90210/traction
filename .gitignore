@@ -1,4 +1,4 @@
 echo "venv/" >> .gitignore
 echo "dataset/" >> .gitignore
 echo "__pycache__/" >> .gitignore
-echo ".DS_Store" >> .gitignore
+echo ".DS_Store" >> .gitignoredataset/live_sessions/
